@@ -520,8 +520,8 @@ def render(i, raw):
         def elem(spr, t0, cy):
             p = clamp((t - t0) / 0.38)
             if p <= 0: return
-            F.blit(spr, 540, cy + oy + (1 - ease_out_cubic(p)) * 40, alpha=ease_out_cubic(p) * oa,
-                   scale=(0.35 + 0.65 * ease_out_back(p, 2.0)) * (1 + 0.04 * math.sin(t * 2.4)))
+            F.blit(spr, 540, cy + oy - (1 - ease_out_cubic(p)) * 40, alpha=ease_out_cubic(p) * oa,
+                   scale=(0.35 + 0.65 * ease_out_back(p, 1.2)) * (1 + 0.02 * math.sin(t * 2.4)))
         elem(pill, 0.05, 318)
         elem(l1, 0.3, 398)
         elem(l2, 0.62, 482)
@@ -563,7 +563,7 @@ def render(i, raw):
         if TAP_T < t < TAP_T + 1.2:
             q = (t - TAP_T) / 1.2
             for k in range(5):
-                F.blit(icon("red_heart_3d.png", 56), 540 + bx + (k - 2) * 38, cy - 90 - q * (180 + k * 25),
+                F.blit(icon("red_heart_3d.png", 56), 540 + bx - 40 + (k - 2) * 34 - q * 70, cy - 90 - q * (110 + k * 12),
                        alpha=(1 - q), scale=0.6 + 0.6 * q, rot=(k - 2) * 12)
 
     # --- subtitles
