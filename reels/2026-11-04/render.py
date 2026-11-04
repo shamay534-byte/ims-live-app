@@ -91,10 +91,13 @@ class Frame:
 
 # ---------------------------------------------------------------- text
 def text_layer(text, size, weight=800, fill=(255, 255, 255), stroke=0, stroke_fill=(0, 0, 0),
-               extrude=0, extrude_fill=(0, 0, 0), gradient=None, shadow=0, pad=40):
+               extrude=0, extrude_fill=(0, 0, 0), gradient=None, shadow=0, pad=40, fixed_line=False):
     f = font(size, weight)
     tmp = ImageDraw.Draw(Image.new("L", (1, 1)))
     bb = tmp.textbbox((0, 0), text, font=f, stroke_width=stroke, direction="rtl", language="he")
+    if fixed_line:  # same vertical box for every word -> shared baseline
+        asc, desc = f.getmetrics()
+        bb = (bb[0], -stroke, bb[2], asc + desc + stroke)
     tw, th = bb[2] - bb[0], bb[3] - bb[1]
     Wd, Hd = tw + 2 * pad + extrude, th + 2 * pad + extrude
     org = (pad - bb[0], pad - bb[1])
@@ -166,9 +169,9 @@ def rounded(w, h, r, fill, grad=None, border=None, shadow=0):
 
 # ---------------------------------------------------------------- content
 DAYS = [("רביעי", "4.11", "sun_3d.png", "sun"),
-        ("חמישי", "5.11", "cloud_with_lightning_and_rain_3d.png", "storm"),
-        ("שישי", "6.11", "cloud_with_rain_3d.png", "rain"),
-        ("שבת", "7.11", "cloud_with_lightning_and_rain_3d.png", "storm"),
+        ("חמישי", "5.11", "ICON_SUNRAINBOLT", "storm"),
+        ("שישי", "6.11", "ICON_SUNRAINBOLT", "rain"),
+        ("שבת", "7.11", "ICON_STORMSUN", "storm"),
         ("ראשון", "8.11", "sun_behind_rain_cloud_3d.png", "rain"),
         ("שני", "9.11", "sun_behind_small_cloud_3d.png", "sun"),
         ("שלישי", "10.11", "sun_behind_small_cloud_3d.png", "sun")]
@@ -290,7 +293,7 @@ CHUNKS = chunks()
 @functools.lru_cache(None)
 def sub_word(text, active):
     return to_np(text_layer(text, 70, 800, fill=(255, 222, 40) if active else (255, 255, 255),
-                            stroke=7, stroke_fill=(0, 0, 0), shadow=8, pad=24))
+                            stroke=7, stroke_fill=(0, 0, 0), shadow=8, pad=24, fixed_line=True))
 
 @functools.lru_cache(None)
 def chip_sprite(text, ic):
@@ -306,6 +309,21 @@ def chip_sprite(text, ic):
     can.alpha_composite(icn, (pad + w - 112 + 18, 15 + pad + (h - 112) // 2 - 4))
     return to_np(can)
 
+def _ic(n, s): return Image.open(A(n)).convert("RGBA").resize((s, s), Image.LANCZOS)
+
+@functools.lru_cache(None)
+def day_icon(ic):
+    can = Image.new("RGBA", (96, 96), (0, 0, 0, 0))
+    if ic == "ICON_SUNRAINBOLT":   # sun + rain cloud + lightning
+        can.alpha_composite(_ic("sun_behind_rain_cloud_3d.png", 92), (0, 0))
+        can.alpha_composite(_ic("high_voltage_3d.png", 46), (40, 48))
+    elif ic == "ICON_STORMSUN":    # storm cloud with a little sun peeking
+        can.alpha_composite(_ic("sun_3d.png", 54), (42, 0))
+        can.alpha_composite(_ic("cloud_with_lightning_and_rain_3d.png", 86), (0, 10))
+    else:
+        can.alpha_composite(_ic(ic, 96), (0, 0))
+    return can
+
 @functools.lru_cache(None)
 def day_card(i, active):
     name, date, ic, th = DAYS[i]
@@ -318,7 +336,7 @@ def day_card(i, active):
     t1 = text_layer(name, 36, 800, fill=(255, 255, 255), pad=0, shadow=0)
     t2 = text_layer(date, 30, 700, fill=(255, 255, 255) if active else (205, 220, 245), pad=0)
     base.alpha_composite(t1, (pad + (w - t1.size[0]) // 2, pad + 18))
-    icn = Image.open(A(ic)).convert("RGBA").resize((96, 96), Image.LANCZOS)
+    icn = day_icon(ic)
     base.alpha_composite(icn, (pad + (w - 96) // 2, pad + 76))
     base.alpha_composite(t2, (pad + (w - t2.size[0]) // 2, pad + h - 30 - t2.size[1]))
     return to_np(base)
@@ -359,7 +377,7 @@ def follow_card(followed):
     wr = Image.new("RGBA", (152, 152), (0, 0, 0, 0)); ImageDraw.Draw(wr).ellipse((5, 5, 146, 146), fill=(255, 255, 255, 255))
     ring = Image.alpha_composite(wr, ring); ring.alpha_composite(av, (10, 10))
     base.alpha_composite(ring, (pad + w - 152 - 24, pad + (h - 152) // 2))
-    t1 = text_layer("עקבו אחריי באינסטגרם", 44, 800, fill=(18, 24, 38), pad=0)
+    t1 = text_layer("עקבו אחריי", 48, 800, fill=(18, 24, 38), pad=0)
     num = text_layer("60.8K", 50, 800, fill=(18, 24, 38), pad=0)
     lab = text_layer("עוקבים", 36, 600, fill=(110, 118, 132), pad=0)
     rx = pad + w - 152 - 48
@@ -552,7 +570,7 @@ def render(i, raw):
     for (t0, t1, ws) in CHUNKS:
         if t0 <= t < t1:
             p = clamp((t - t0) / 0.12)
-            sprs = [sub_word(w["t"], w["s"] <= t < (w["e"] + 0.05)) for w in ws]
+            sprs = [sub_word(w["t"], w["s"] <= t < (ws[j + 1]["s"] if j + 1 < len(ws) else w["e"] + 0.2)) for j, w in enumerate(ws)]
             gap = -30
             total = sum(s.shape[1] for s in sprs) + gap * (len(sprs) - 1)
             sc = min(1.0, 860 / total) * (0.9 + 0.1 * ease_out_back(p, 2.5))
