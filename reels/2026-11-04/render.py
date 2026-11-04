@@ -185,23 +185,23 @@ TITLE_T1 = 4.35
 
 BEHIND = [  # t0, t1, icon, cx, cy, size
     (0.0, 2.7, "sun_3d.png", 178, 735, 250),
-    (0.45, 4.35, "cloud_with_lightning_and_rain_3d.png", 885, 760, 340),
-    (5.25, 9.45, "sun_3d.png", 885, 750, 330),
-    (9.5, 24.25, "cloud_with_lightning_and_rain_3d.png", 885, 760, 340),
-    (24.3, 28.05, "sun_behind_rain_cloud_3d.png", 885, 760, 330),
-    (28.15, 35.45, "cloud_with_rain_3d.png", 885, 760, 340),
-    (35.5, 40.45, "sun_behind_cloud_3d.png", 885, 760, 330),
+    (0.45, 4.35, "cloud_with_lightning_and_rain_3d.png", 862, 760, 310),
+    (5.25, 9.45, "sun_3d.png", 862, 750, 310),
+    (9.5, 24.25, "cloud_with_lightning_and_rain_3d.png", 862, 760, 310),
+    (24.3, 28.05, "sun_behind_rain_cloud_3d.png", 862, 760, 310),
+    (28.15, 35.45, "cloud_with_rain_3d.png", 862, 760, 310),
+    (35.5, 40.45, "sun_behind_cloud_3d.png", 862, 760, 310),
     (36.3, 40.3, "rainbow_3d.png", 178, 745, 250),
-    (40.5, 45.7, "cloud_with_rain_3d.png", 885, 760, 340),
-    (45.85, 62.75, "cloud_with_lightning_and_rain_3d.png", 885, 760, 350),
-    (57.4, 62.7, "water_wave_3d.png", 165, 1060, 250),
-    (62.8, 68.05, "sun_behind_small_cloud_3d.png", 885, 760, 330),
-    (68.1, 76.6, "cloud_3d.png", 885, 760, 320),
-    (76.65, 78.9, "fallen_leaf_3d.png", 885, 760, 260),
+    (40.5, 45.7, "cloud_with_rain_3d.png", 862, 760, 310),
+    (45.85, 62.75, "cloud_with_lightning_and_rain_3d.png", 862, 760, 310),
+    (57.4, 62.7, "water_wave_3d.png", 180, 1060, 220),
+    (62.8, 68.05, "sun_behind_small_cloud_3d.png", 862, 760, 310),
+    (68.1, 76.6, "cloud_3d.png", 862, 760, 310),
+    (76.65, 78.9, "fallen_leaf_3d.png", 862, 760, 250),
     (76.75, 78.9, "maple_leaf_3d.png", 178, 760, 200),
-    (79.0, 82.9, "sun_behind_rain_cloud_3d.png", 885, 760, 330),
-    (82.95, 99, "crescent_moon_3d.png", 885, 740, 280),
-    (83.3, 99, "glowing_star_3d.png", 180, 700, 120),
+    (79.0, 82.9, "sun_behind_rain_cloud_3d.png", 862, 760, 310),
+    (82.95, 99, "crescent_moon_3d.png", 862, 740, 270),
+    (83.3, 99, "glowing_star_3d.png", 190, 700, 120),
 ]
 LIGHTNING = [14.38, 33.14, 54.24]
 CHIPS = [  # t0, t1, text, icon, side
@@ -327,7 +327,7 @@ def day_icon(ic):
 @functools.lru_cache(None)
 def day_card(i, active):
     name, date, ic, th = DAYS[i]
-    w, h = 128, 252
+    w, h = 128, 228
     if active:
         base = rounded(w, h, 26, (255, 255, 255, 255), grad=THEME[th], border=((255, 255, 255, 235), 4), shadow=14)
     else:
@@ -335,23 +335,23 @@ def day_card(i, active):
     pad = (base.size[0] - w) // 2
     t1 = text_layer(name, 36, 800, fill=(255, 255, 255), pad=0, shadow=0)
     t2 = text_layer(date, 30, 700, fill=(255, 255, 255) if active else (205, 220, 245), pad=0)
-    base.alpha_composite(t1, (pad + (w - t1.size[0]) // 2, pad + 18))
+    base.alpha_composite(t1, (pad + (w - t1.size[0]) // 2, pad + 12))
     icn = day_icon(ic)
-    base.alpha_composite(icn, (pad + (w - 96) // 2, pad + 76))
-    base.alpha_composite(t2, (pad + (w - t2.size[0]) // 2, pad + h - 30 - t2.size[1]))
+    base.alpha_composite(icn, (pad + (w - 96) // 2, pad + 64))
+    base.alpha_composite(t2, (pad + (w - t2.size[0]) // 2, pad + h - 22 - t2.size[1]))
     return to_np(base)
 
 @functools.lru_cache(None)
 def title_parts():
-    pill_t = text_layer("4.11", 64, 800, fill=(255, 255, 255), pad=0)
-    pw, ph = pill_t.size[0] + 70, 80
+    pill_t = text_layer("4.11", 54, 800, fill=(255, 255, 255), pad=0)
+    pw, ph = pill_t.size[0] + 60, 66
     pill = rounded(pw, ph, 40, (255, 255, 255), grad=((255, 92, 70), (255, 40, 120)),
                    border=((255, 255, 255, 230), 3), shadow=12)
     pp = (pill.size[0] - pw) // 2
     pill.alpha_composite(pill_t, (pp + 35, pp + (ph - pill_t.size[1]) // 2 - 2))
-    l1 = text_layer("לקראת מהפך", 112, 800, gradient=((255, 255, 255), (214, 232, 255)),
+    l1 = text_layer("לקראת מהפך", 96, 800, gradient=((255, 255, 255), (214, 232, 255)),
                     stroke=5, stroke_fill=(16, 38, 92), extrude=10, extrude_fill=(20, 52, 130), shadow=14, pad=26)
-    l2 = text_layer("וגשם בסופ״ש", 98, 800, gradient=((120, 230, 255), (40, 150, 255)),
+    l2 = text_layer("וגשם בסופ״ש", 86, 800, gradient=((120, 230, 255), (40, 150, 255)),
                     stroke=5, stroke_fill=(10, 30, 80), extrude=9, extrude_fill=(14, 40, 110), shadow=14, pad=26)
     return to_np(pill), to_np(l1), to_np(l2)
 
@@ -522,9 +522,9 @@ def render(i, raw):
             if p <= 0: return
             F.blit(spr, 540, cy + oy + (1 - ease_out_cubic(p)) * 40, alpha=ease_out_cubic(p) * oa,
                    scale=(0.35 + 0.65 * ease_out_back(p, 2.0)) * (1 + 0.04 * math.sin(t * 2.4)))
-        elem(pill, 0.05, 276)
-        elem(l1, 0.3, 372)
-        elem(l2, 0.62, 466)
+        elem(pill, 0.05, 318)
+        elem(l1, 0.3, 398)
+        elem(l2, 0.62, 482)
 
     # --- forecast strip (top, above the head)
     if t >= STRIP_T0:
@@ -540,8 +540,8 @@ def render(i, raw):
             sc = 1.0
             if isact:
                 t_on = max(a0 for (a0, a1, idx) in ACTIVE if k in idx and a0 <= t)
-                sc = 1.0 + 0.12 * ease_out_back(clamp((t - t_on) / 0.3), 2.5) + 0.015 * math.sin(t * 6)
-            cy = 386 + (1 - ease_out_back(p, 1.6)) * -60
+                sc = 1.0 + 0.07 * ease_out_back(clamp((t - t_on) / 0.3), 2.5) + 0.015 * math.sin(t * 6)
+            cy = 402 + (1 - ease_out_back(p, 1.6)) * -60
             F.blit(day_card(k, isact), cx, cy, alpha=ease_out_cubic(p) * (1.0 if isact or not act else 0.92), scale=sc)
 
     # --- follow card
