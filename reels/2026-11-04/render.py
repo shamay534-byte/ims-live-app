@@ -520,8 +520,8 @@ def render(i, raw):
         def elem(spr, t0, cy):
             p = clamp((t - t0) / 0.38)
             if p <= 0: return
-            F.blit(spr, 540, cy + oy - (1 - ease_out_cubic(p)) * 40, alpha=ease_out_cubic(p) * oa,
-                   scale=(0.35 + 0.65 * ease_out_back(p, 1.2)) * (1 + 0.02 * math.sin(t * 2.4)))
+            F.blit(spr, 540, round(cy + oy - (1 - ease_out_cubic(p)) * 40), alpha=ease_out_cubic(p) * oa,
+                   scale=(0.35 + 0.65 * ease_out_back(p, 1.2)))
         elem(pill, 0.05, 318)
         elem(l1, 0.3, 398)
         elem(l2, 0.62, 482)
