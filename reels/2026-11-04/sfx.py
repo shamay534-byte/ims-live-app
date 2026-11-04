@@ -26,7 +26,7 @@ def click():
 def add(t,s,g):
     i=int(t*SR); out[i:i+len(s)]+=s[:N-i]*g
 W_=whoosh(); 
-for t in [0.0,4.15]+[c-0.22 for c in r.DAY_CHANGES]: add(max(0,t),W_,0.16)
+for t in [0.0,4.15]+[c-0.02 for c in r.DAY_CHANGES]: add(max(0,t),W_,0.16)
 for t in [0.05,0.3,0.62]: add(t,pop(700),0.18)
 for k in range(7): add(r.STRIP_T0+k*0.06,pop(1100+k*60),0.06)
 for c in r.CHIPS: add(c[0],pop(850),0.13)

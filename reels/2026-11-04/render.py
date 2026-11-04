@@ -8,6 +8,8 @@ A = lambda n: os.path.join(HERE, "assets", n)
 W, H, FPS = 1080, 1920, 30
 VIDEO = os.path.join(HERE, "dl", "video.mp4")
 NFR = 2654
+KEEP = [(0, 235), (282, 703), (844, 1183), (1222, 2654)]  # source frame ranges kept
+CUTS = [(a1 / 30, b0 / 30) for (a0, a1), (b0, b1) in zip(KEEP, KEEP[1:])]
 DUR = NFR / FPS
 
 PERSON = np.load(os.path.join(HERE, "person.npy"), mmap_mode="r")
@@ -175,9 +177,9 @@ DAYS = [("רביעי", "4.11", "sun_3d.png", "sun"),
         ("ראשון", "8.11", "sun_behind_rain_cloud_3d.png", "rain"),
         ("שני", "9.11", "sun_behind_small_cloud_3d.png", "sun"),
         ("שלישי", "10.11", "sun_behind_small_cloud_3d.png", "sun")]
-ACTIVE = [(5.30, 9.42, [0]), (9.42, 28.12, [1]), (28.12, 45.78, [2]), (45.78, 78.95, [3]),
+ACTIVE = [(5.30, 9.40, [0]), (9.40, 28.12, [1]), (28.12, 45.78, [2]), (45.78, 78.95, [3]),
           (78.95, 82.94, [4]), (82.94, 99, [5, 6])]
-DAY_CHANGES = [9.42, 28.12, 45.78, 78.95, 82.94]
+DAY_CHANGES = [9.40, 28.12, 45.78, 78.95, 82.94]
 THEME = {"sun": ((255, 196, 40), (255, 112, 30)), "rain": ((64, 156, 255), (36, 90, 220)),
          "storm": ((140, 92, 255), (76, 40, 190))}
 STRIP_T0 = 4.35
@@ -205,13 +207,13 @@ BEHIND = [  # t0, t1, icon, cx, cy, size
 ]
 LIGHTNING = [14.38, 33.14, 54.24]
 CHIPS = [  # t0, t1, text, icon, side
-    (5.9, 9.3, "שמשי ונוח", "sun_3d.png", "L"),
+    (5.9, 7.55, "נוח ומדהים", "sun_3d.png", "L"),
     (9.9, 11.75, "מחר · בוקר עד צהריים", "alarm_clock_3d.png", "R"),
     (12.5, 14.3, "גשם מקומי וחזק", "umbrella_with_rain_drops_3d.png", "L"),
     (14.3, 15.6, "ברקים ורעמים", "high_voltage_3d.png", "R"),
     (15.6, 17.3, "צפון ושרון", "round_pushpin_3d.png", "L"),
     (18.6, 21.1, "חוף מרכזי · עד הערב", "round_pushpin_3d.png", "R"),
-    (22.7, 24.25, "חוף דרומי", "round_pushpin_3d.png", "L"),
+    (22.7, 23.2, "חוף דרומי", "round_pushpin_3d.png", "L"),
     (24.35, 28.0, "הפוגות ושמש", "sun_behind_small_cloud_3d.png", "R"),
     (29.8, 31.7, "מהצפון עד צפון הנגב", "round_pushpin_3d.png", "L"),
     (33.1, 35.4, "ברקים ורעמים", "high_voltage_3d.png", "R"),
@@ -236,11 +238,10 @@ MOOD = [(0, 0), (2.2, 0), (3.6, 0.55), (4.6, 0.3), (5.6, -0.6), (9.2, -0.6), (11
         (24.0, 0.85), (24.8, 0.2), (27.8, 0.2), (28.8, 0.8), (35.3, 0.8), (36.0, 0.1), (40.0, 0.1), (41.0, 0.55),
         (45.6, 0.55), (46.4, 1.0), (62.5, 1.0), (63.4, 0.15), (67.9, 0.15), (68.8, 0.45), (78.8, 0.45),
         (79.4, 0.5), (82.6, 0.5), (83.4, -0.2), (99, -0.2)]
-RAIN = [(0, 0), (1.0, 0), (1.6, 0.55), (4.2, 0.55), (4.8, 0), (11.6, 0), (12.3, 1), (24.0, 1), (24.6, 0.15),
-        (28.0, 0.15), (28.9, 1), (35.3, 1), (35.9, 0.1), (40.0, 0.1), (41.0, 0.5), (45.6, 0.5), (49.0, 0.6),
+RAIN = [(0, 0), (1.0, 0), (1.6, 0.55), (4.2, 0.55), (4.8, 0), (11.6, 0), (12.3, 1), (28.9, 1), (35.3, 1), (35.9, 0.1), (40.0, 0.1), (41.0, 0.5), (45.6, 0.5), (49.0, 0.6),
         (49.6, 1), (62.5, 1), (63.2, 0.1), (68.0, 0.1), (69, 0.35), (78.8, 0.35), (79.4, 0.7), (82.4, 0.7),
         (83.0, 0), (99, 0)]
-ZOOM_CUTS = [9.42, 11.8, 17.34, 21.16, 24.3, 28.12, 31.74, 35.5, 40.74, 45.78, 49.14, 53.74, 56.78, 59.28,
+ZOOM_CUTS = [9.40, 11.8, 17.34, 21.16, 28.12, 31.74, 35.5, 40.74, 45.78, 49.14, 53.74, 56.78, 59.28,
              62.84, 68.16, 70.98, 76.72, 78.95, 82.94, 86.62]
 
 def zoom_at(t):
@@ -248,9 +249,10 @@ def zoom_at(t):
     if t < 4.6:
         return z0 if t < 0.55 else (1.0 + 0.035 * ease_in_out((t - 0.6) / 3.8))
     prev, cur, tc = 1.035, 1.035, 4.6
-    vals = [1.0, 1.075]
+    vals = [1.075, 1.0]
     for i, c in enumerate(ZOOM_CUTS):
         if t >= c: prev, cur, tc = cur, vals[i % 2], c
+    if any(abs(tc - b) < 0.05 for _, b in CUTS): return cur  # hard cut -> instant punch
     return prev + (cur - prev) * ease_out_cubic((t - tc) / 0.16)
 
 # rain streaks
@@ -269,6 +271,7 @@ def load_words():
             txt = w["w"].strip()
             brk = txt.endswith((",", ".", "?", "!"))
             txt = txt.strip(",.?!")
+            if any(a - 0.01 <= w["s"] < b - 0.05 for a, b in CUTS): continue
             ws.append({"t": FIX.get(txt, txt), "s": w["s"], "e": w["e"], "brk": brk})
     return ws
 
@@ -278,13 +281,16 @@ def chunks():
         cur.append(w)
         nxt_gap = ws[i + 1]["s"] - w["e"] if i + 1 < len(ws) else 9
         L = sum(len(x["t"]) + 1 for x in cur)
-        if w["brk"] or len(cur) >= 4 or L >= 17 or nxt_gap > 0.35:
+        cut_next = i + 1 < len(ws) and any(w["s"] < a <= ws[i + 1]["s"] for a, b in CUTS)
+        if cut_next or w["brk"] or len(cur) >= 4 or L >= 17 or nxt_gap > 0.35:
             out.append(cur); cur = []
     if cur: out.append(cur)
     res = []
     for i, c in enumerate(out):
         t0 = c[0]["s"]; t1 = out[i + 1][0]["s"] if i + 1 < len(out) else DUR
         t1 = min(t1, c[-1]["e"] + 0.6)
+        for a, b in CUTS:
+            if t0 < a < t1: t1 = a
         res.append((t0, t1, c))
     return res
 CHUNKS = chunks()
@@ -605,7 +611,30 @@ def run(start, end, outpath):
     enc.stdin.close(); enc.wait()
     print(f"chunk {start}-{end}: frames {i - start}, head-overlap frames {len(log)} {log[:5]}", flush=True)
 
+OUT = [f for a, b in KEEP for f in range(a, b)]
+
+def run_out(o0, o1, outpath):
+    src = OUT[o0:o1]; want = set(src)
+    cmd = ["ffmpeg", "-v", "error", "-ss", f"{src[0] / FPS:.4f}", "-i", VIDEO, "-vf", f"fps={FPS},scale={W}:{H}",
+           "-frames:v", str(src[-1] - src[0] + 1), "-f", "rawvideo", "-pix_fmt", "rgb24", "-"]
+    dec = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+    enc = subprocess.Popen(["ffmpeg", "-v", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}",
+                            "-r", str(FPS), "-i", "-", "-c:v", "libx264", "-preset", "medium", "-crf", "18",
+                            "-pix_fmt", "yuv420p", outpath], stdin=subprocess.PIPE)
+    log = []; n = 0
+    for i in range(src[0], src[-1] + 1):
+        b = dec.stdout.read(W * H * 3)
+        if len(b) < W * H * 3: break
+        if i not in want: continue
+        out, ov = render(i, np.frombuffer(b, np.uint8).reshape(H, W, 3))
+        if ov: log.append((i, ov))
+        enc.stdin.write(out.tobytes()); n += 1
+    enc.stdin.close(); enc.wait()
+    print(f"out {o0}-{o1}: frames {n}/{len(src)}, head-overlap frames {len(log)} {log[:4]}", flush=True)
+
 if __name__ == "__main__":
+    if sys.argv[1] == "out":
+        run_out(int(sys.argv[2]), int(sys.argv[3]), sys.argv[4]); sys.exit()
     if sys.argv[1] == "still":
         tsec = float(sys.argv[2])
         i = int(tsec * FPS)
