@@ -350,9 +350,9 @@ def title_parts():
     pp = (pill.size[0] - pw) // 2
     pill.alpha_composite(pill_t, (pp + 35, pp + (ph - pill_t.size[1]) // 2 - 2))
     l1 = text_layer("לקראת מהפך", 96, 800, gradient=((255, 255, 255), (214, 232, 255)),
-                    stroke=5, stroke_fill=(16, 38, 92), extrude=10, extrude_fill=(20, 52, 130), shadow=14, pad=26)
+                    stroke=5, stroke_fill=(16, 38, 92), extrude=10, extrude_fill=(20, 52, 130), shadow=14, pad=80)
     l2 = text_layer("וגשם בסופ״ש", 86, 800, gradient=((120, 230, 255), (40, 150, 255)),
-                    stroke=5, stroke_fill=(10, 30, 80), extrude=9, extrude_fill=(14, 40, 110), shadow=14, pad=26)
+                    stroke=5, stroke_fill=(10, 30, 80), extrude=9, extrude_fill=(14, 40, 110), shadow=14, pad=80)
     return to_np(pill), to_np(l1), to_np(l2)
 
 @functools.lru_cache(None)
