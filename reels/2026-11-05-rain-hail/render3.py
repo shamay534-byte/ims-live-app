@@ -249,62 +249,186 @@ def hud(F, v, sp):
         F.blit(txt("קמ״ש", 36, (255, 210, 140), 700, shadow=0), 270, 562, alpha=a * b)
 
 # ------------------------------------------------------------------ intro title
+# ---- title v3: textured letters (real water / ice from the world image), glass strip
+def _texture(kind, w, h):
+    if kind == "water":
+        src = WORLD[7550:8200, 0:900]
+    elif kind == "ice":
+        src = WORLD[1850:2550, 300:1700]
+    else:
+        src = None
+    if src is not None:
+        tex = cv2.resize(src, (w, h), interpolation=cv2.INTER_AREA).astype(np.float32)
+        if kind == "water":
+            tex = tex * np.array([0.85, 1.05, 1.25]) + np.array([10, 40, 70])
+        else:
+            tex = tex * 1.05 + np.array([25, 35, 45])
+        yy = np.linspace(0, 1, h)[:, None, None]
+        tex = tex * (1.15 - 0.3 * yy)
+        return np.clip(tex, 0, 255)
+    yy = np.linspace(0, 1, h)[:, None, None]
+    c0, c1 = np.array([255, 236, 110.]), np.array([255, 70, 25.])
+    return c0 * (1 - yy) + c1 * yy * np.ones((1, w, 1))
+
+@functools.lru_cache(None)
+def tword(text, size, kind="white", glow=(120, 200, 255)):
+    f = R.font(size, 800)
+    d0 = ImageDraw.Draw(Image.new("L", (1, 1)))
+    bb = d0.textbbox((0, 0), text, font=f, direction="rtl", language="he")
+    pad = 60
+    w, h = bb[2] - bb[0] + 2 * pad, bb[3] - bb[1] + 2 * pad
+    org = (pad - bb[0], pad - bb[1])
+    m = Image.new("L", (w, h), 0); ImageDraw.Draw(m).text(org, text, font=f, fill=255, direction="rtl", language="he")
+    edge = Image.new("L", (w, h), 0); ImageDraw.Draw(edge).text(org, text, font=f, fill=255, direction="rtl", language="he",
+                                                                  stroke_width=max(3, size // 32), stroke_fill=255)
+    ma = np.asarray(m).astype(np.float32) / 255; ea = np.asarray(edge).astype(np.float32) / 255
+    if kind == "white":
+        yy = np.linspace(0, 1, h)[:, None, None]
+        fill = (np.array([255, 255, 255.]) * (1 - yy) + np.array([214, 232, 255.]) * yy) * np.ones((1, w, 1))
+    else:
+        fill = _texture(kind, w, h)
+    # bevel: bright top edge, darker bottom
+    sh = np.asarray(m.filter(ImageFilter.GaussianBlur(size / 30))).astype(np.float32) / 255
+    up = np.roll(sh, 3, axis=0); dn = np.roll(sh, -3, axis=0)
+    bevel = np.clip((sh - up) * 2.2, 0, 1)[..., None]; dark = np.clip((sh - dn) * 1.6, 0, 1)[..., None]
+    fill = fill + (255 - fill) * bevel * 0.85 - fill * dark * 0.35
+    # glossy highlight on upper half of the glyphs
+    yy = np.linspace(0, 1, h)[:, None]
+    gloss = np.clip(1 - np.abs(yy - 0.38) / 0.12, 0, 1) * 0.0 + np.clip((0.5 - yy) / 0.5, 0, 1) * 0.18
+    fill = fill + (255 - fill) * gloss[..., None]
+    out = np.zeros((h, w, 4), np.float32)
+    # outer glow + soft shadow
+    g = np.asarray(edge.filter(ImageFilter.GaussianBlur(size / 7))).astype(np.float32) / 255
+    s = np.asarray(edge.filter(ImageFilter.GaussianBlur(size / 10))).astype(np.float32) / 255
+    s = np.roll(s, int(size / 14), axis=0)
+    out[..., :3] = np.array(glow, np.float32); out[..., 3] = np.clip(g * 0.55, 0, 1)
+    sha = np.clip(s * 0.75, 0, 1)
+    out[..., :3] = out[..., :3] * (1 - sha[..., None]) + np.array([4, 12, 30.]) * sha[..., None]
+    out[..., 3] = np.maximum(out[..., 3], sha)
+    # thin white rim then the textured face
+    rim = np.clip(ea - ma, 0, 1)
+    out[..., :3] = out[..., :3] * (1 - rim[..., None]) + 255 * rim[..., None]
+    out[..., 3] = np.maximum(out[..., 3], rim)
+    out[..., :3] = out[..., :3] * (1 - ma[..., None]) + fill * ma[..., None]
+    out[..., 3] = np.maximum(out[..., 3], ma)
+    out[..., 3] *= 255
+    return np.clip(out, 0, 255)
+
+@functools.lru_cache(None)
+def title_strip(w, h):
+    pad = 40; im = Image.new("RGBA", (w + 2 * pad, h + 2 * pad), (0, 0, 0, 0)); d = ImageDraw.Draw(im)
+    sh = Image.new("L", im.size, 0); ImageDraw.Draw(sh).rounded_rectangle((pad, pad + 8, pad + w, pad + h + 8), h // 2, fill=150)
+    shl = Image.new("RGBA", im.size, (0, 8, 25, 255)); shl.putalpha(sh.filter(ImageFilter.GaussianBlur(14)))
+    im = Image.alpha_composite(im, shl)
+    body = Image.new("RGBA", im.size, (0, 0, 0, 0)); bd = ImageDraw.Draw(body)
+    bd.rounded_rectangle((pad, pad, pad + w, pad + h), h // 2, fill=(14, 30, 60, 175))
+    bd.rounded_rectangle((pad + 3, pad + 3, pad + w - 3, pad + h // 2), h // 2 - 3, fill=(255, 255, 255, 22))
+    im = Image.alpha_composite(im, body)
+    ol = Image.new("RGBA", im.size, (0, 0, 0, 0))
+    ImageDraw.Draw(ol).rounded_rectangle((pad, pad, pad + w, pad + h), h // 2, outline=(150, 220, 255, 230), width=3)
+    im = Image.alpha_composite(im, ol.filter(ImageFilter.GaussianBlur(5))); im = Image.alpha_composite(im, ol)
+    return to_np(im)
+
 @functools.lru_cache(None)
 def title_words():
-    w1 = [("איך", big("איך", 104, (255, 255, 255), (210, 230, 255))),
-          ("נוצר", big("נוצר", 104, (255, 255, 255), (210, 230, 255))),
-          ("גשם", big("גשם", 140, (150, 230, 255), (30, 130, 255), (6, 30, 90), (8, 50, 140), 10))]
-    w2 = [("ולמה", big("ולמה", 66, (255, 255, 255), (220, 235, 255), extrude=5)),
-          ("ברד", big("ברד", 80, (220, 250, 255), (120, 200, 255), (10, 40, 90), (20, 70, 140), 6)),
-          ("יכול", big("יכול", 66, (255, 255, 255), (220, 235, 255), extrude=5)),
-          ("לרדת", big("לרדת", 66, (255, 255, 255), (220, 235, 255), extrude=5)),
-          ("ביום", big("ביום", 66, (255, 255, 255), (220, 235, 255), extrude=5)),
-          ("שרב?", big("שרב?", 84, (255, 230, 90), (255, 70, 30), (80, 20, 0), (130, 40, 0), 6))]
+    w1 = [("איך", tword("איך", 100)), ("נוצר", tword("נוצר", 100)), ("גשם", tword("גשם", 156, "water", (90, 190, 255)))]
+    w2 = [("ולמה", tword("ולמה", 60)), ("ברד", tword("ברד", 70, "ice", (170, 230, 255))), ("יכול", tword("יכול", 60)),
+          ("לרדת", tword("לרדת", 60)), ("ביום", tword("ביום", 60)), ("שרב?", tword("שרב?", 72, "fire", (255, 140, 60)))]
     return w1, w2
 
 def layout_rtl(words, cx, gap=-150, maxw=950):
-    pad = 180
     tot = sum(s.shape[1] for _, s in words) + gap * (len(words) - 1)
-    k = min(1.0, maxw / (tot - 0))
+    k = min(1.0, maxw / tot)
     x = cx + tot * k / 2; out = []
     for _, s in words:
         out.append(x - s.shape[1] * k / 2); x -= (s.shape[1] + gap) * k
     return out, k
 
+# ---- title v4: letters made of cloud, raining; glossy subtitle close underneath
+@functools.lru_cache(None)
+def cloud_word(text, size):
+    f = R.font(size, 800)
+    d0 = ImageDraw.Draw(Image.new("L", (1, 1)))
+    bb = d0.textbbox((0, 0), text, font=f, direction="rtl", language="he")
+    pad = 70; w, h = bb[2] - bb[0] + 2 * pad, bb[3] - bb[1] + 2 * pad
+    m = Image.new("L", (w, h), 0); ImageDraw.Draw(m).text((pad - bb[0], pad - bb[1]), text, font=f, fill=255, direction="rtl", language="he")
+    tex = cv2.resize(WORLD[3050:3650, 250:1850], (w * 2, h * 2))[h // 2:h // 2 + h, w // 2:w // 2 + w].astype(np.float32)
+    tex = np.clip((tex - tex.mean()) * 0.85 + 232, 165, 255)
+    yy = np.linspace(0, 1, h)[:, None, None]
+    tex = tex * (1.06 - 0.22 * yy) + np.array([0, 4, 14.]) * yy      # lit from above, cooler underside
+    mk = np.asarray(m.filter(ImageFilter.GaussianBlur(2.5))).astype(np.float32) / 255
+    puff = np.asarray(m.filter(ImageFilter.MaxFilter(13)).filter(ImageFilter.GaussianBlur(12))).astype(np.float32) / 255
+    sh = np.roll(np.asarray(m.filter(ImageFilter.MaxFilter(9)).filter(ImageFilter.GaussianBlur(16))).astype(np.float32) / 255, 12, axis=0)
+    out = np.zeros((h, w, 4), np.float32)
+    a_sh = sh * 0.5
+    out[..., :3] = np.array([10, 18, 34.]); out[..., 3] = a_sh
+    a_p = puff * 0.65
+    out[..., :3] = out[..., :3] * (1 - a_p[..., None]) + tex * a_p[..., None]
+    out[..., 3] = a_p + out[..., 3] * (1 - a_p)
+    out[..., :3] = out[..., :3] * (1 - mk[..., None]) + tex * mk[..., None]
+    out[..., 3] = mk + out[..., 3] * (1 - mk)
+    out[..., 3] *= 255
+    bottoms = []
+    ma = np.asarray(m) > 0
+    for x in range(0, w, 3):
+        ys = np.where(ma[:, x])[0]
+        if len(ys): bottoms.append((x - w / 2, ys.max() - h / 2))
+    return np.clip(out, 0, 255), bottoms
+
+@functools.lru_cache(None)
+def sub_words():
+    return [("ולמה", tword("ולמה", 64)), ("ברד", tword("ברד", 76, "ice", (170, 230, 255))), ("יכול", tword("יכול", 64)),
+            ("לרדת", tword("לרדת", 64)), ("ביום", tword("ביום", 64)), ("שרב?", tword("שרב?", 78, "fire", (255, 140, 60)))]
+
+TITLE1 = ["איך", "נוצר", "גשם"]
+_trng = random.Random(21)
+TDROPS = [(_trng.random(), _trng.uniform(0, 1), _trng.uniform(0.7, 1.3)) for _ in range(70)]
+
 def intro_overlay(F, t):
-    w1, w2 = title_words()
-    if t < FLASH1 + 0.2:
-        ex = clamp((t - FLASH1) / 0.18)
-        oa = 1 - ex; osc = 1 + 0.6 * ex
-        # dark gradient for legibility
-        if True:
-            g = (np.linspace(1, 0, 600) ** 1.5 * 0.55)[:, None, None]
-            F.img[0:600] *= (1 - g * oa * clamp(t / 0.3))
-        xs1, k1 = layout_rtl(w1, 540, gap=-162, maxw=1100); xs2, k2 = layout_rtl(w2, 540, gap=-162, maxw=1130)
-        for k, ((wd, s), x) in enumerate(zip(w1, xs1)):
-            p = clamp((t - 0.1 - k * 0.22) / 0.35)
+    if t < FLASH1 + 0.25:
+        ex = clamp((t - FLASH1) / 0.22)
+        oa = 1 - ex
+        g = (np.linspace(1, 0, 640) ** 1.6 * 0.42)[:, None, None]
+        F.img[0:640] *= (1 - g * oa * clamp(t / 0.4))
+        cws = [cloud_word(w, 168) for w in TITLE1]
+        gap = -110
+        tot = sum(c[0].shape[1] for c in cws) + gap * (len(cws) - 1)
+        k1 = min(1.0, 1080 / tot)
+        x = 540 + tot * k1 / 2
+        cy = 372
+        drops_src = []
+        for j, (spr, bottoms) in enumerate(cws):
+            ww = spr.shape[1] * k1; cx = x - ww / 2; x -= (spr.shape[1] + gap) * k1
+            p = clamp((t - 0.05 - j * 0.28) / 0.7)          # condense out of mist
             if p <= 0: continue
-            y = 372 if wd != "גשם" else 362
-            F.blit(s, 540 + (x - 540) * osc, y - (1 - eoc(p)) * 50, alpha=eoc(p) * oa, scale=(0.3 + 0.7 * eob(p, 2.4)) * osc * k1)
-            if wd == "גשם" and p >= 1:
-                for j in range(4):
-                    q = ((t * 0.9 + j * 0.25) % 1.0)
-                    F.blit(droplet(9), x - 60 + j * 38, 420 + q * 120, alpha=oa * (1 - q) * 0.9)
-        for k, ((wd, s), x) in enumerate(zip(w2, xs2)):
-            p = clamp((t - 0.9 - k * 0.13) / 0.3)
+            e = eoc(p)
+            blur = (1 - e) * 22 + ex * 30
+            s2 = spr if blur < 0.6 else cv2.GaussianBlur(spr, (0, 0), blur)
+            drift = math.sin(t * 0.9 + j) * 4
+            F.blit(s2, cx + drift, cy + (1 - e) * 18, alpha=min(1, e * 1.2) * oa, scale=k1 * (1.12 - 0.12 * e + 0.35 * ex))
+            if p >= 1: drops_src += [(cx + bx * k1, cy + by * k1) for bx, by in bottoms]
+        # rain falling from the cloud letters
+        if drops_src and oa > 0:
+            lay = np.zeros((H, W), np.uint8)
+            n = len(drops_src)
+            for (u, ph, sp) in TDROPS:
+                bx, by = drops_src[int(u * n) % n]
+                q = (t * 1.6 * sp + ph) % 1.0
+                y0 = by + 6 + q * 95
+                cv2.line(lay, (int(bx), int(y0)), (int(bx + 2), int(y0 + 26)), int(230 * (1 - q)), 2, cv2.LINE_AA)
+            a = (lay.astype(np.float32) / 255 * 0.85 * oa)[..., None]
+            F.img += (np.array([225, 238, 255], np.float32) - F.img) * a
+        # subtitle line, close under the title
+        sw = sub_words()
+        xs2, k2 = layout_rtl(sw, 540, gap=-104, maxw=1020)
+        for j, ((wd, s), xx) in enumerate(zip(sw, xs2)):
+            p = clamp((t - 1.05 - j * 0.12) / 0.3)
             if p <= 0: continue
-            sc = (0.3 + 0.7 * eob(p, 2.6)) * osc * k2
-            rot = 0
-            if wd == "שרב?": sc *= 1 + 0.04 * math.sin(t * 9)
-            if wd == "ברד": rot = math.sin(t * 6) * 2
-            F.blit(s, 540 + (x - 540) * osc, 500, alpha=eoc(p) * oa, scale=sc, rot=rot)
-        # shine sweep
-        sw = (t - 1.6) / 0.9
-        if 0 < sw < 1:
-            band = np.zeros((H, W), np.float32)
-            xx = np.arange(W)[None, :] + np.arange(H)[:, None] * 0.35
-            cxp = -300 + sw * 1700
-            band = np.exp(-((xx - cxp) / 60) ** 2)[..., None] * 0
+            e = eoc(p)
+            sc = k2 * (1.15 - 0.15 * e) * (1 + 0.3 * ex)
+            if wd == "שרב?": sc *= 1 + 0.035 * math.sin(t * 10)
+            F.blit(s, 540 + (xx - 540) * (1 + 0.3 * ex), 482 + (1 - e) * 16, alpha=e * oa, scale=sc)
+
     # "פינת העשרה" badge slams in with the lightning flash
     if t >= FLASH1:
         p = clamp((t - FLASH1) / 0.25)
@@ -477,12 +601,12 @@ def journey(F, v, c):
         for k in range(10):
             F.blit(soft_dot(16 - k, (220, 240, 255)), 600, py - 30 - k * 28, alpha=a * (0.45 - k * 0.04))
         popin(F, label_sprite("נופלות", "down_arrow_3d.png"), 640, 1180, v, 24.4, 25.4)
-        popin(F, label_sprite("נמס!", "droplet_3d.png", (130, 210, 255)), 640, 1180, v, 25.45, 27.0, back=3)
+        popin(F, label_sprite("מפשיר!", "droplet_3d.png", (130, 210, 255)), 640, 1180, v, 25.45, 27.0, back=3)
     rain(F, v, clamp((v - 26.0) / 0.6) * (1 - clamp((v - 28.6) / 0.5)) * 0.9)
-    popin(F, big("גשם!", 150, (255, 255, 255), (150, 210, 255)), 540, 640, v, 27.25, 28.0, s0=0.2, back=3)
+    popin(F, big("גשם!", 150, (255, 255, 255), (150, 210, 255)), 540, 640, v, 27.2, 27.55, s0=0.2, back=3, fout=0.15)
     # --- hail section
-    popin(F, big("ועכשיו: ברד", 112, (225, 245, 255), (120, 190, 255)), 540, 640, v, 27.85, 29.6, s0=0.2)
-    popin(F, icon_shadowed("ice_3d.png", 220)[0], 540, 900, v, 27.95, 29.6, s0=0.2, rot=math.sin(v * 5) * 8)
+    popin(F, big("ועכשיו: ברד", 112, (225, 245, 255), (120, 190, 255)), 540, 640, v, 27.8, 29.6, s0=0.2)
+    popin(F, icon_shadowed("ice_3d.png", 220)[0], 540, 900, v, 27.9, 29.6, s0=0.2, rot=math.sin(v * 5) * 8)
     w = R.window(v, 28.9, 30.1, 0.25, 0.2)
     if w:
         _, a = w
@@ -610,7 +734,7 @@ def follow(F, v, t0, tap):
                    scale=0.6 + 0.6 * q, rot=(k - 2.5) * 10)
 
 # ------------------------------------------------------------------ subtitles
-FIXW = {"כשלוהד": "כשלוהט", "מתאבים": "מתעבים", "לכבישי": "לגבישי", "זהירים": "זעירים", "לברת": "לברד"}
+FIXW = {"נמס": "מפשיר", "כשלוהד": "כשלוהט", "מתאבים": "מתעבים", "לכבישי": "לגבישי", "זהירים": "זעירים", "לברת": "לברד"}
 def all_words():
     out = []
     for s in json.load(open(os.path.join(D, "tr_video.json"))):
