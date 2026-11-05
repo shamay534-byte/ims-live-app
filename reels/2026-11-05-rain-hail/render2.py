@@ -550,8 +550,6 @@ def scene5(F, v, t):
         F.blit(icon("light_bulb_3d.png", 120), 900, 330, alpha=a, scale=0.5 + 0.5 * eob(pin, 2.5), rot=12)
     if v >= 62.2:
         follow(F, t, INTRO + 62.2, INTRO + 63.15)
-    if v >= 62.2:
-        F.blit(badge_sprite(), 540, 420, alpha=eoc(clamp((v - 62.3) / 0.4)), scale=0.75)
 
 @functools.lru_cache(None)
 def follow_card(followed):
