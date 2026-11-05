@@ -19,6 +19,10 @@ def thud():
     return np.sin(2*np.pi*55*t*np.exp(-t*3))*np.exp(-t*9)+0.5*lp(rng.standard_normal(n),0.15)*np.exp(-t*18)
 def click():
     n=int(0.05*SR); t=np.arange(n)/SR; return (np.sin(2*np.pi*2200*t)*0.6+rng.standard_normal(n)*0.4)*np.exp(-t*120)
+def nt(vold):  # old voiceover time -> new time
+    if vold < 46.6: return vold
+    if vold < 51.62: return 46.6 + (vold - 46.6) * 0.7231
+    return vold - 1.39
 def add(t,s,g):
     i=int(t*SR)
     if i<0: s=s[-i:]; i=0
@@ -35,7 +39,7 @@ ts=np.arange(0, DUR, 1/30); spd=[]
 for t in ts:
     v=t-VO0
     if v<-0.3: spd.append(0); continue
-    a=m.cam(v); b=m.cam(v+1/30); spd.append(abs(b[1]-a[1])*1080/a[2])
+    a=m.cam(m.vmap(v)); b=m.cam(m.vmap(v+1/30)); spd.append(abs(b[1]-a[1])*1080/a[2])
 spd=np.clip(np.array(spd)/40,0,1.2)
 env=np.interp(np.arange(N)/SR, ts, spd); env=lp(env,0.0005)
 x=rng.standard_normal(N); wind=lp(x,0.02)*0.7+lp(x-lp(x,0.01),0.08)*0.3; wind/=np.abs(wind).max()
@@ -43,12 +47,12 @@ start=int((VO0-0.2)*SR); wind[:start]=0
 out+= wind*(0.05+0.5*env)*0.5
 # pops on every graphic
 POPS=[1.25,3.0,4.4,5.6,7.4,7.95,10.35,11.9,12.75,15.4,17.6,21.6,22.55,24.4,25.45,27.25,27.85,28.9,30.1,32.4,33.65,34.75,36.45,38.6,40.3,41.75,43.4,44.5,46.55,48.5,52.5]
-for v in POPS: add(VO0+v+0.01, pop(900), 0.12)
+for v in POPS: add(VO0+nt(v)+0.01, pop(900), 0.12)
 for v in [17.95]: add(VO0+v, thud(), 0.25)
 for v in [27.25,32.4]: add(VO0+v, whoosh(0.3), 0.12)
 add(VO0+26.0, rainbed(2.6)*np.sin(np.linspace(0,np.pi,int(2.6*SR))), 0.08)
-add(VO0+51.62, thud(), 0.55); add(VO0+51.62, crack()[:int(0.6*SR)], 0.15)
-add(VO0+55.25, whoosh(0.35), 0.13); add(VO0+55.85, click(), 0.3); add(VO0+55.87, pop(1300), 0.15)
+add(VO0+nt(51.62), thud(), 0.55); add(VO0+nt(51.62), crack()[:int(0.6*SR)], 0.15)
+add(VO0+nt(55.25), whoosh(0.35), 0.13); add(VO0+nt(55.85), click(), 0.3); add(VO0+nt(55.87), pop(1300), 0.15)
 # soft pulse beat (112 bpm) under the voiceover
 bpm=112; beat=60/bpm
 kick_n=int(0.25*SR); kt=np.arange(kick_n)/SR; kick=np.sin(2*np.pi*np.cumsum(50+90*np.exp(-kt*30))/SR)*np.exp(-kt*10)

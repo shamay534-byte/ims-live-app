@@ -13,10 +13,16 @@ D = os.path.join(HERE, "r2")
 W, H, FPS = 1080, 1920, 30
 INTRO = 8.3
 VO0 = 8.05                     # voiceover starts right after "פינת העשרה"
-VO_DUR = 58.30
+VO_DUR = 56.91
 DUR = VO0 + VO_DUR
 NFR = int(round(DUR * FPS))
 FLASH1, FLASH2 = 6.933, 7.233
+# the broken take ("ואין לה באמת זמן לי") was removed from the voiceover (1.39 s);
+# graphics/camera run on the original timeline, compressed smoothly over the dive
+def vmap(vn):
+    if vn < 46.6: return vn
+    if vn < 50.23: return 46.6 + (vn - 46.6) / 0.7231
+    return vn + 1.39
 HEAD = np.load(os.path.join(D, "seed2_head.npy"), mmap_mode="r")
 CYAN = (90, 230, 255)
 
@@ -554,6 +560,27 @@ def journey(F, v, c):
         follow(F, v, 55.25, 55.85)
 
 @functools.lru_cache(None)
+def follow_card_plain(followed):
+    """Instagram-style follow card without the profile photo"""
+    w, h = 760, 190
+    base = rounded(w, h, 44, (255, 255, 255, 246), shadow=18)
+    pad = (base.size[0] - w) // 2
+    t1 = text_layer("עקבו אחריי", 52, 800, fill=(18, 24, 38), pad=0)
+    num = text_layer("60.9K", 52, 800, fill=(18, 24, 38), pad=0)
+    lab = text_layer("עוקבים", 38, 600, fill=(110, 118, 132), pad=0)
+    rx = pad + w - 44
+    base.alpha_composite(t1, (rx - t1.size[0], pad + 28))
+    base.alpha_composite(num, (rx - num.size[0], pad + 104))
+    base.alpha_composite(lab, (rx - num.size[0] - 14 - lab.size[0], pad + 114))
+    bw, bh = 200, 88
+    btn = rounded(bw, bh, 24, (239, 239, 239, 255) if followed else (0, 149, 246, 255), shadow=0)
+    bp = (btn.size[0] - bw) // 2
+    bt = text_layer("במעקב" if followed else "עקוב", 44, 800, fill=(18, 24, 38) if followed else (255, 255, 255), pad=0)
+    btn.alpha_composite(bt, (bp + (bw - bt.size[0]) // 2, bp + (bh - bt.size[1]) // 2 - 3))
+    base.alpha_composite(btn, (pad + 34 - bp, pad + (h - bh) // 2 - bp))
+    return to_np(base), (pad + 34 + bw / 2 - base.size[0] / 2, pad + h / 2 - base.size[1] / 2)
+
+@functools.lru_cache(None)
 def follow_card_609(followed):
     old = R.text_layer
     def patched(text, *a, **k):
@@ -567,7 +594,7 @@ def follow_card_609(followed):
 
 def follow(F, v, t0, tap):
     p = clamp((v - t0) / 0.4)
-    spr, (bx, by) = follow_card_609(v >= tap + 0.1)
+    spr, (bx, by) = follow_card_plain(v >= tap + 0.1)
     press = 1 - 0.06 * max(0, 1 - abs(v - tap - 0.05) / 0.12)
     cy = 1150 + (1 - eob(p, 1.7)) * 300
     F.blit(spr, 540, cy, alpha=eoc(p), scale=press)
@@ -588,7 +615,7 @@ def all_words():
     out = []
     for s in json.load(open(os.path.join(D, "tr_video.json"))):
         for w in s["words"]: out.append((w["w"], w["s"], w["e"]))
-    for s in json.load(open(os.path.join(D, "tr_final.json"))):
+    for s in json.load(open(os.path.join(D, "tr_final2.json"))):
         for w in s["words"]: out.append((w["w"], w["s"] + VO0, w["e"] + VO0))
     res = []
     for t, s, e in out:
@@ -630,7 +657,7 @@ def subtitles(F, t):
 # ------------------------------------------------------------------ frame
 def shake_at(t):
     sx = sy = 0.0
-    for t0, amp in [(FLASH1, 22), (FLASH2, 12), (VO0 + 51.62, 30)]:
+    for t0, amp in [(FLASH1, 22), (FLASH2, 12), (VO0 + 50.23, 30)]:
         d = t - t0
         if 0 <= d < 0.4:
             k = (1 - d / 0.4) ** 2 * amp
@@ -639,7 +666,7 @@ def shake_at(t):
 
 def render(i, raw):
     t = i / FPS
-    v = t - VO0
+    v = vmap(t - VO0)
     shx, shy = shake_at(t)
     hm = np.zeros((H, W), bool)
     if t < 7.95:
