@@ -228,9 +228,9 @@ CHIPS = [  # t0, t1, text, icon, side
 FOLLOW_T0, TAP_T = 65.9, 66.45
 
 # ---- rain-totals chart on a cloud-framed screen behind the presenter
-RAINFALL = [("נהריה", 52), ("רחובות", 47), ("אשדוד", 44), ("ת״א", 38), ("ירושלים", 15)]
+RAINFALL = [("נהריה", 52), ("אשדוד", 51), ("רחובות", 47), ("ת״א", 38), ("ירושלים", 15)]
 HILITE = {"נהריה": 7.78, "ת״א": 13.64, "רחובות": 13.64, "אשדוד": 15.06}
-SCX, SCY, SW_, SH_ = 842, 642, 372, 610
+SCX, SCY, SW_, SH_ = 812, 642, 372, 610
 MAP_W, MAP_H = SW_ - 24, SH_ - 24 - 70 - 40
 
 @functools.lru_cache(None)
@@ -505,7 +505,7 @@ def follow_card(followed):
     ring = Image.alpha_composite(wr, ring); ring.alpha_composite(av, (10, 10))
     base.alpha_composite(ring, (pad + w - 152 - 24, pad + (h - 152) // 2))
     t1 = text_layer("עקבו אחריי", 48, 800, fill=(18, 24, 38), pad=0)
-    num = text_layer("60.9K", 50, 800, fill=(18, 24, 38), pad=0)
+    num = text_layer("61K", 50, 800, fill=(18, 24, 38), pad=0)
     lab = text_layer("עוקבים", 36, 600, fill=(110, 118, 132), pad=0)
     rx = pad + w - 152 - 48
     base.alpha_composite(t1, (rx - t1.size[0], pad + 30))
