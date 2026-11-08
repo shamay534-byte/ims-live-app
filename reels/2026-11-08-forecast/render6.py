@@ -507,7 +507,7 @@ def follow_card(followed):
     ring = Image.alpha_composite(wr, ring); ring.alpha_composite(av, (10, 10))
     base.alpha_composite(ring, (pad + w - 152 - 24, pad + (h - 152) // 2))
     t1 = text_layer("עקבו אחריי", 48, 800, fill=(18, 24, 38), pad=0)
-    num = text_layer("61K", 50, 800, fill=(18, 24, 38), pad=0)
+    num = text_layer("61.2K", 50, 800, fill=(18, 24, 38), pad=0)
     lab = text_layer("עוקבים", 36, 600, fill=(110, 118, 132), pad=0)
     rx = pad + w - 152 - 48
     base.alpha_composite(t1, (rx - t1.size[0], pad + 30))
