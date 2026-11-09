@@ -55,8 +55,15 @@ export function loadField(man: Manifest, id: string): Promise<Field> {
   let p = cache.get(key);
   if (!p) {
     p = fetch(`${BASE}/data/ecmwf/${meta.file}`)
-      .then((r) => {
+      .then(async (r) => {
         if (!r.ok) throw new Error(`${id}: ${r.status}`);
+        // Hosts that only serve text types get the same int16 grid as base64 in a .txt file
+        if (meta.file.endsWith('.txt')) {
+          const bin = atob((await r.text()).trim());
+          const bytes = new Uint8Array(bin.length);
+          for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+          return bytes.buffer;
+        }
         return r.arrayBuffer();
       })
       .then((buf) => ({ meta, q: new Int16Array(buf), n: man.grid.nlat * man.grid.nlon }));

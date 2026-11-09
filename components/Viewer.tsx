@@ -127,7 +127,11 @@ export default function Viewer() {
       q.set('l', lvl);
     }
     if (ticks[idx]) q.set('t', String(ticks[idx].lead));
-    history.replaceState(null, '', `#${q.toString()}`);
+    try {
+      history.replaceState(null, '', `#${q.toString()}`);
+    } catch {
+      /* sandboxed frames may refuse history changes */
+    }
   }, [model, param, lvl, area, type, idx, ticks, isIms]);
 
   const pendingMs = useRef<number | null>(null);

@@ -4,12 +4,13 @@ import maplibregl, { type Map as MlMap, type ImageSource, type LayerSpecificatio
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { fieldsFor, unitFor, type LevelId, type ParamDef } from '@/lib/catalog';
 import {
-  bounds, loadField, pointSeries, renderField, stepValues, valuesFor,
+  BASE, bounds, loadField, pointSeries, renderField, stepValues, valuesFor,
   type Field, type Manifest,
 } from '@/lib/ecmwf';
 import { contours, type ContourLine } from '@/lib/contours';
 import { WindParticles } from '@/lib/particles';
 import type { Scale } from '@/lib/colors';
+import { CITIES } from '@/lib/cities';
 
 export interface Pick {
   lon: number;
@@ -36,6 +37,8 @@ const BLANK =
 
 const STYLE_URL = 'https://tiles.openfreemap.org/styles/dark';
 const RTL_PLUGIN = 'https://unpkg.com/@mapbox/mapbox-gl-rtl-text@0.2.3/mapbox-gl-rtl-text.min.js';
+
+const FALLBACK_CITIES = ['תל אביב', 'ירושלים', 'חיפה', 'באר שבע', 'אילת', 'טבריה', 'קריית שמונה', 'אשקלון', 'מצפה רמון'];
 
 let rtlRequested = false;
 function ensureRtl() {
@@ -127,10 +130,29 @@ export default function EcmwfMap(props: Props) {
         });
       })
       .catch(() => {
-        // basemap unavailable: show the field on the plain background
-        const add = () => {
+        // Tile service unreachable: use the bundled Natural Earth lines (public/basemap.json)
+        // and plain HTML labels for the main cities.
+        const add = async () => {
           map.addSource('field', { type: 'image', url: BLANK, coordinates: coords as [[number, number], [number, number], [number, number], [number, number]] });
           map.addLayer({ id: 'field', type: 'raster', source: 'field', paint: { 'raster-resampling': 'linear', 'raster-fade-duration': 0 } });
+          try {
+            const bm = await (await fetch(`${BASE}/basemap.json`)).json();
+            const line = (id: string, color: string, width: number, dash?: number[]) => {
+              map.addSource(id, { type: 'geojson', data: bm[id] });
+              map.addLayer({ id, type: 'line', source: id, paint: { 'line-color': color, 'line-width': width, ...(dash ? { 'line-dasharray': dash } : {}) } });
+            };
+            line('coast', 'rgba(255,255,255,0.7)', 1.1);
+            line('lakes', 'rgba(255,255,255,0.6)', 0.9);
+            line('borders', 'rgba(255,255,255,0.45)', 0.8, [3, 2]);
+          } catch {
+            /* no basemap file: field only */
+          }
+          for (const c of CITIES.filter((x) => FALLBACK_CITIES.includes(x.name))) {
+            const el = document.createElement('div');
+            el.className = 'city';
+            el.textContent = c.name;
+            new maplibregl.Marker({ element: el, anchor: 'left' }).setLngLat([c.lon, c.lat]).addTo(map);
+          }
           setReady(true);
         };
         if (map.isStyleLoaded()) add();
