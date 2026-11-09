@@ -1,5 +1,5 @@
 'use client';
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Icon } from './Icons';
 import { dayKey, longValid, shortDay } from '@/lib/time';
 
@@ -20,10 +20,27 @@ export function Timeline({ ticks, index, onChange, playing, onTogglePlay }: Prop
   const track = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
 
-  const days = useMemo(
-    () => ticks.map((t, i) => (i === 0 || dayKey(t.ms) !== dayKey(ticks[i - 1].ms) ? shortDay(t.ms) : '')),
-    [ticks],
-  );
+  // track width, so day labels can be thinned out when they would overlap
+  const [width, setWidth] = useState(800);
+  useEffect(() => {
+    const el = track.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setWidth(el.clientWidth));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const days = useMemo(() => {
+    const px = width / Math.max(1, ticks.length);
+    let last = -Infinity;
+    return ticks.map((t, i) => {
+      const newDay = i === 0 || dayKey(t.ms) !== dayKey(ticks[i - 1].ms);
+      if (!newDay) return '';
+      const fits = (i - last) * px >= 58;
+      if (fits) last = i;
+      return fits ? shortDay(t.ms) : ' ';
+    });
+  }, [ticks, width]);
 
   const pickAt = (clientX: number) => {
     const el = track.current;
@@ -71,7 +88,7 @@ export function Timeline({ ticks, index, onChange, playing, onTogglePlay }: Prop
       >
         {ticks.map((t, i) => (
           <span key={t.lead} className={`tick${days[i] ? ' day' : ''}${i === index ? ' on' : ''}`}>
-            {days[i] && <b>{days[i]}</b>}
+            {days[i].trim() && <b>{days[i]}</b>}
             <i />
           </span>
         ))}
