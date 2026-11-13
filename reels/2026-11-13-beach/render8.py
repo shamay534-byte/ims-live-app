@@ -414,7 +414,7 @@ FDROPS = [(rng.choice([rng.uniform(40, 270), rng.uniform(800, 1040)]), rng.unifo
            rng.randint(38, 60)) for _ in range(9)]
 
 # subtitles
-FIX = {}
+FIX = {"הצילים": "המצילים"}
 def load_words():
     ws = []
     for s in json.load(open(os.path.join(HERE, "r7", "tr.json"))):
@@ -502,7 +502,7 @@ def day_card(i, active):
 
 @functools.lru_cache(None)
 def title_parts():
-    l1 = text_layer("שבת לים!", 150, 800, gradient=((120, 240, 255), (20, 140, 230)),
+    l1 = text_layer("שבת לים!", 210, 800, gradient=((120, 240, 255), (20, 140, 230)),
                     stroke=5, stroke_fill=(16, 38, 92), extrude=10, extrude_fill=(20, 52, 130), shadow=14, pad=80)
     l2 = text_layer(" ", 10, 800, gradient=((255, 255, 255), (214, 232, 255)),
                     stroke=5, stroke_fill=(16, 38, 92), extrude=9, extrude_fill=(20, 52, 130), shadow=14, pad=80)
