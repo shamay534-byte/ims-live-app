@@ -289,7 +289,7 @@ ass = [
     "[V4+ Styles]",
     "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, "
     "Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding",
-    "Style: Default,Heebo,25,&H00FFFFFF,&H00FFFFFF,&H00341E10,&H96000000,-1,0,0,0,100,100,0,0,1,2.4,1.2,2,40,40,20,1",
+    "Style: Default,HeeboSub,26,&H00FFFFFF,&H00FFFFFF,&H5A140A05,&H5A140A05,0,0,0,0,100,100,0,0,3,5,0,2,40,40,18,-1",
     "", "[Events]", "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text"]
 for a, b, c in events:
     ass.append(f"Dialogue: 0,{ass_t(a)},{ass_t(b)},Default,,0,0,0,,{c}")
@@ -301,7 +301,7 @@ print("subtitle cards:", len(events))
 
 # ---------- mux (subtitles burned in, plus soft track) ----------
 subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", "work/video.mp4", "-i", "work/audio.m4a",
-                "-i", "episode01_he.srt", "-filter_complex", "[0:v]subtitles=episode01_he.ass:fontsdir=fonts[v]",
+                "-i", "episode01_he.srt", "-filter_complex", "[0:v]subtitles=episode01_he.ass:fontsdir=subfonts[v]",
                 "-map", "[v]", "-map", "1:a", "-map", "2:s", "-c:v", "libx264", "-preset", "slow", "-crf", "21",
                 "-c:a", "copy", "-c:s", "mov_text", "-metadata:s:s:0", "language=heb",
                 "-metadata", f"title={TITLE} - פרק 1", "-movflags", "+faststart", "episode01.mp4"], check=True)

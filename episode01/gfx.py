@@ -86,7 +86,9 @@ def place(canvas, img, cx, cy, scale=1.0, alpha=1.0, rot=0):
     im = img
     if scale != 1.0: im = im.resize((max(1, int(im.width * scale)), max(1, int(im.height * scale))), Image.LANCZOS)
     if rot: im = im.rotate(rot, resample=Image.BICUBIC, expand=True)
-    if alpha < 1: im.putalpha(im.getchannel("A").point(lambda v: int(v * alpha)))
+    if alpha < 1:
+        if im is img: im = im.copy()
+        im.putalpha(im.getchannel("A").point(lambda v: int(v * alpha)))
     canvas.alpha_composite(im, (int(cx - im.width / 2), int(cy - im.height / 2)))
 
 
@@ -226,7 +228,7 @@ def concept_card(bg_key="k31", dur=7.0):
     def card(title, line1, line2, icon, accent):
         im = Image.new("RGBA", (cw, ch), (0, 0, 0, 0)); d = ImageDraw.Draw(im)
         d.rounded_rectangle([0, 0, cw - 1, ch - 1], radius=28 * S, fill=(14, 26, 46, 235), outline=accent, width=3 * S)
-        icon(d, cw / 2, 62 * S, 46 * S)
+        icon(d, cw / 2, 50 * S, 36 * S)
         for txt, f, y, col in ((title, font(F_BOLD, 34), 122, accent), (line1, font(F_MED, 20), 172, (240, 240, 240)),
                                (line2, font(F_REG, 18), 204, (190, 205, 225))):
             m = text_mask(txt, f, pad=0)
