@@ -112,7 +112,7 @@ def render_segment(i, s):
         d = s["dur"]; n = int(d * FPS)
         z = {"in": f"1.0+0.12*on/{n}", "in_fast": f"1.0+0.25*on/{n}", "pan": "1.18"}[s["move"]]
         x = f"(iw-iw/zoom)*on/{n}" if s["move"] == "pan" else "iw/2-(iw/zoom/2)"
-        cmd = ["-loop", "1", "-t", f"{d:.3f}", "-i", s["src"]]
+        cmd = ["-i", s["src"]]
         vf = (f"scale=2752:1536,zoompan=z='{z}':x='{x}':y='ih/2-(ih/zoom/2)':d={n}:s={W}x{H}:fps={FPS},"
               + vf_tail)
     else:  # end card
@@ -153,10 +153,11 @@ print(f"video {TOTAL:.1f}s, {len(EDL)} shots")
 
 # ---------- audio events ----------
 inputs, filt, labels = [], [], []
+NIN = [0]
 
 
 def add(src, start, vol, extra="", a=None, d=None, loop=False):
-    k = len(inputs)
+    k = NIN[0]; NIN[0] += 1
     if loop: inputs.extend(["-stream_loop", "-1"])
     if a is not None: inputs.extend(["-ss", f"{a:.3f}"])
     if d is not None: inputs.extend(["-t", f"{d:.3f}"])
