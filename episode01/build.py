@@ -120,14 +120,14 @@ def render_segment(i, s):
         cmd = ["-f", "lavfi", "-t", f"{d}", "-i", f"color=c=black:s={W}x{H}:r={FPS}"]
         vf = (f"drawtext=fontfile=fonts/secular-one.ttf:text='{TITLE}':fontcolor=white:fontsize=54:"
               f"x=(w-tw)/2:y=h/2-70:alpha='if(lt(t,1),t,1)',"
-              f"drawtext=fontfile=fonts/heebo.ttf:text='בפרק הבא\\: האוקיינוס שמעלינו':fontcolor=0xF2C14E:"
+              f"drawtext=fontfile=fonts/heebo.ttf:text='בפרק הבא   האוקיינוס שמעלינו':fontcolor=0xF2C14E:"
               f"fontsize=26:x=(w-tw)/2:y=h/2+20:alpha='if(lt(t,1.5),0,min(1,t-1.5))',"
               + vf_tail)
     if s.get("title"):
         vf += (f",drawtext=fontfile=fonts/secular-one.ttf:text='{TITLE}':fontcolor=white:fontsize=78:"
                f"borderw=3:bordercolor=0x1d2b3a:x=(w-tw)/2:y=h/2-95:"
                f"alpha='if(lt(t,1.5),0,if(lt(t,3),(t-1.5)/1.5,if(gt(t,10.6),max(0,(11.6-t)),1)))',"
-               f"drawtext=fontfile=fonts/heebo.ttf:text='פרק 1 · התחנה הנטושה':fontcolor=0xF2C14E:fontsize=30:"
+               f"drawtext=fontfile=fonts/heebo.ttf:text='פרק ראשון   התחנה הנטושה':fontcolor=0xF2C14E:fontsize=30:"
                f"borderw=2:bordercolor=0x1d2b3a:x=(w-tw)/2:y=h/2+5:"
                f"alpha='if(lt(t,3.5),0,if(lt(t,5),(t-3.5)/1.5,if(gt(t,10.6),max(0,(11.6-t)),1)))'")
     if s.get("fadein"): vf += f",fade=t=in:st=0:d={s['fadein']}"
@@ -204,7 +204,7 @@ for s, st, d in timeline:
 close_bed(amb, TOTAL); close_bed(mus, TOTAL)
 
 n = len(labels)
-filt.append("".join(labels) + f"amix=inputs={n}:normalize=0:dropout_transition=0,"
+filt.append("".join(labels) + f"amix=inputs={n}:normalize=0:dropout_transition=0,apad=whole_dur={TOTAL:.3f},"
             f"atrim=0:{TOTAL:.3f},alimiter=limit=0.89,loudnorm=I=-16:TP=-1.5:LRA=11[mix]")
 open("work/audio_filter.txt", "w").write(";\n".join(filt))
 subprocess.run(["ffmpeg", "-y", "-loglevel", "error", *inputs, "-filter_complex_script", "work/audio_filter.txt",
@@ -225,7 +225,7 @@ with open("episode01_he.srt", "w") as f:
 
 # ---------- mux ----------
 subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", "work/video.mp4", "-i", "work/audio.m4a",
-                "-i", "episode01_he.srt", "-map", "0:v", "-map", "1:a", "-map", "2:s", "-c:v", "copy", "-c:a", "copy",
+                "-i", "episode01_he.srt", "-map", "0:v", "-map", "1:a", "-map", "2:s", "-c:v", "libx264", "-preset", "slow", "-crf", "21", "-c:a", "copy",
                 "-c:s", "mov_text", "-metadata:s:s:0", "language=heb", "-metadata", f"title={TITLE} - פרק 1",
-                "-movflags", "+faststart", "-shortest", "episode01.mp4"], check=True)
+                "-movflags", "+faststart", "episode01.mp4"], check=True)
 print("done", dur("episode01.mp4"))
