@@ -32,6 +32,16 @@ def lip(track, *lines, **kw):
     return dict(kind="clip", src=f"clips/{track}.mp4", a=a, b=b, lines=evs, native=0, **kw)
 
 
+def rlip(lid, **kw):
+    """Single-line re-recorded lip-sync clip (line starts 0.5s into the clip)."""
+    d = dur(f"audio/{lid}.wav")
+    return dict(kind="clip", src=f"clips/R_{lid}.mp4", a=0.2, b=0.5 + d + 0.45, lines=[(lid, 0.3)], native=0, **kw)
+
+
+def frames(folder, d, **kw):
+    return dict(kind="frames", src=folder, dur=d, **kw)
+
+
 def wan_or_still(name, key, d, **kw):
     return clip(name, 0, d, **kw) if os.path.exists(f"clips/{name}.mp4") else still(key, d, **kw)
 
@@ -56,29 +66,30 @@ EDL = [
     clip("w20", 0, 7, native=0.6),
     lip("L22", "o4"), lip("L21", "m4"),
     clip("w23", 0, 6, native=0.5, amb=("rain_room", 0.30)),
-    lip("L28", "o5"),
+    rlip("o5"),
     clip("w24", 0, 5.6, native=0.7, sfx=[("pop", 5.0, 0.9)]),
     clip("w25", 0, 7, native=0.9),
-    lip("L26", "n1"), lip("L27", "m5"), lip("L26", "n2"), lip("L27", "m6"), lip("L29", "n3"),
+    lip("L26", "n1"), lip("L27", "m5"), rlip("n2"), lip("L27", "m6"), lip("L29", "n3"),
     clip("w31", 0, 6, native=0.4),
     # ---------- SCENE 3: weather vs climate ----------
     lip("L30", "m7"), lip("L26", "n4"), lip("L27", "m8"), lip("L26", "n5"), lip("L28", "o6"),
     lip("L32", "n6"), lip("L27", "m9"), lip("L26", "n7"), lip("L28", "o7"), lip("L32", "n8"),
-    lip("L27", "m10"), lip("L29", "n9"), lip("L28", "o8"), lip("L26", "n10"),
+    lip("L27", "m10"), lip("L29", "n9"), rlip("o8"), lip("L26", "n10"),
+    frames("work/concept", 7.0, sfx=[("chime", 0.35, 0.6)]),
     # ---------- SCENE 4: forty years of dots ----------
     lip("L32", "n11", music=("wonder", 0.40)),
     clip("w40", 0, 8, native=0.6, sfx=[("chime", 1.0, 0.5)]),
     lip("L42", "o9"),
     clip("w41", 0, 9.5, native=0.5, lines=[("n12", 1.2)]),
     wan_or_still("w43", "k43", 6, native=0.6, sfx=[("chime", 0.3, 0.7)]),
-    lip("L44", "m11"), lip("L45", "n13"), lip("L44", "m12"), lip("L45", "n14"),
+    rlip("m11"), lip("L45", "n13"), lip("L44", "m12"), rlip("n14"),
     lip("L44", "m13"), lip("L45", "n15"),
     # ---------- SCENE 5: the lock ----------
     wan_or_still("w50", "k50", 6.2, native=0.5, lines=[("m14", 0.8)], music=("mystery", 0.20, 35)),
-    lip("L51", "o10", "o11", sfx=[("locked", 3.75, 0.8)]),
-    lip("L27", "m15"),
+    lip("L51", "o10", sfx=[("locked", 2.9, 0.8)]), rlip("o11"),
+    rlip("m15"),
     lip("L52", "m16", sfx=[("pages", 0.0, 0.5)]),
-    lip("L28", "o12"), lip("L27", "m17"), lip("L26", "n16"), lip("L44", "m18"),
+    rlip("o12"), rlip("m17"), lip("L26", "n16"), lip("L44", "m18"),
     wan_or_still("w54", "k54", 6, move="in_fast", native=0.8, sfx=[("lock", 0.2, 0.9)]),
     lip("L28", "o13"),
     # ---------- SCENE 6: the map room ----------
@@ -88,14 +99,14 @@ EDL = [
     lip("L62", "m19"), lip("L63", "n17"),
     wan_or_still("w64", "k64", 12, native=0.6, lines=[("g3", 1.2)]),
     still("loc_map", 5, move="in", lines=[("g4", 1.6)], sfx=[("tape", 3.5, 0.8)]),
-    lip("L62", "m20"),
+    rlip("m20"),
     # ---------- SCENE 7: cliffhanger ----------
     wan_or_still("w70", "k70", 5, move="in_fast", native=0.8, sfx=[("tick", 0.0, 0.9)], music=("ominous", 0.45)),
     lip("L28", "o14"), lip("L72", "n18"), lip("L73", "m21"), lip("L72", "n19"),
     wan_or_still("w73", "k73", 5.5, native=0.4, lines=[("a3", 0.4)]),
     lip("L73", "m22"),
     wan_or_still("w74", "k74", 10, native=0.7, sfx=[("wind", 0.0, 0.8)], amb=("", 0), fadeout=1.5),
-    dict(kind="end", dur=6),
+    frames("work/endcard", 7.0),
 ]
 
 
@@ -115,6 +126,10 @@ def render_segment(i, s):
         cmd = ["-i", s["src"]]
         vf = (f"scale=2752:1536,zoompan=z='{z}':x='{x}':y='ih/2-(ih/zoom/2)':d={n}:s={W}x{H}:fps={FPS},"
               + vf_tail)
+    elif s["kind"] == "frames":
+        d = s["dur"]
+        cmd = ["-framerate", str(FPS), "-i", f"{s['src']}/%04d.png"]
+        vf = vf_tail
     else:  # end card
         d = s["dur"]
         cmd = ["-f", "lavfi", "-t", f"{d}", "-i", f"color=c=black:s={W}x{H}:r={FPS}"]
@@ -124,17 +139,13 @@ def render_segment(i, s):
               f"fontsize=26:x=(w-tw)/2:y=h/2+20:alpha='if(lt(t,1.5),0,min(1,t-1.5))',"
               + vf_tail)
     if s.get("title"):
-        vf += (f",drawtext=fontfile=fonts/secular-one.ttf:text='{TITLE}':fontcolor=white:fontsize=78:"
-               f"borderw=3:bordercolor=0x1d2b3a:x=(w-tw)/2:y=h/2-95:"
-               f"alpha='if(lt(t,1.5),0,if(lt(t,3),(t-1.5)/1.5,if(gt(t,10.6),max(0,(11.6-t)),1)))',"
-               f"drawtext=fontfile=fonts/heebo.ttf:text='פרק ראשון   התחנה הנטושה':fontcolor=0xF2C14E:fontsize=30:"
-               f"borderw=2:bordercolor=0x1d2b3a:x=(w-tw)/2:y=h/2+5:"
-               f"alpha='if(lt(t,3.5),0,if(lt(t,5),(t-3.5)/1.5,if(gt(t,10.6),max(0,(11.6-t)),1)))'")
+        cmd += ["-framerate", str(FPS), "-i", "work/title/%04d.png"]
+        vf = f"[0:v]{vf}[b];[b][1:v]overlay=0:0:shortest=1"
     if s.get("fadein"): vf += f",fade=t=in:st=0:d={s['fadein']}"
     if s.get("fadeout"): vf += f",fade=t=out:st={d - s['fadeout']:.3f}:d={s['fadeout']}"
     vf += ",eq=saturation=1.05:contrast=1.03"
     if not os.path.exists(out) or "-f" in sys.argv:
-        subprocess.run(["ffmpeg", "-y", "-loglevel", "error", *cmd, "-vf", vf, "-an", "-c:v", "libx264",
+        subprocess.run(["ffmpeg", "-y", "-loglevel", "error", *cmd, "-filter_complex" if s.get("title") else "-vf", vf, "-an", "-c:v", "libx264",
                         "-preset", "medium", "-crf", "17", "-r", str(FPS), out], check=True)
     return out, dur(out)
 
@@ -194,11 +205,7 @@ for s, st, d in timeline:
         extra = ",highpass=f=300,lowpass=f=2600,aecho=0.8:0.7:60|120:0.35|0.2" if l == "a3" else ""
         add(f"audio/{l}.wav", st + off, 1.0, extra)
         ld = dur(f"audio/{l}.wav")
-        txt = LINES[l][2]
-        import re
-        txt = re.sub(r"\[[^\]]*\]", "", txt).replace("ְ", "").strip()
-        txt = "".join(c for c in txt if not ("֑" <= c <= "ׇ"))  # strip niqqud
-        subs.append((st + off, st + off + ld, " ".join(txt.split())))
+        subs.append((st + off, st + off + ld, l))
     for name, off, vol in s.get("sfx", []):
         add(f"sfx/{name}.mp3", st + off, vol)
 close_bed(amb, TOTAL); close_bed(mus, TOTAL)
@@ -213,19 +220,89 @@ print(f"audio: {n} events")
 
 
 # ---------- subtitles ----------
-def ts(x):
-    h, r = divmod(x, 3600); m, s = divmod(r, 60)
-    return f"{int(h):02d}:{int(m):02d}:{int(s):02d},{int((s % 1) * 1000):03d}"
+import re
+
+SUB_OVERRIDE = {"g1": "יומן תחנה, רישום 14,611. לחץ האוויר צונח. זו לא עוד סערה. חיכיתי לה ארבעים שנה.",
+                "m4": "14 מעלות. הוא מדד פה דברים.",
+                "n6": "מה שאת רואה בחלון, זה מזג אוויר. מה שקורה עכשיו, פה, היום. גשם, 14 מעלות, רוח. מחר זה יכול להתהפך.",
+                "o10": "קל. 14 מעלות. אפס, אחת, ארבע.",
+                "n13": "האופי של המקום. חורף גשום ומתון, קיץ חם ויבש. ככה זה פה בדרך כלל, גם אם היום נראה אחרת. וכדי לקרוא לזה אקלים, צריך לפחות 30 שנה של מדידות.",
+                "n8": "היום הוא צרח כמו קומקום. זה מצב הרוח שלו, היום. אבל אם תכירי אותו 30 שנה, תדעי איזה בן אדם הוא באמת.",
+                "n10": "את זה נדע בעוד 30 שנה.", "n19": "שאת צריכה ללמוד הרבה. ואין לנו 30 שנה."}
+FIXES = json.load(open("fix_lines.json")) if os.path.exists("fix_lines.json") else {}
 
 
-subs.sort()
+def sub_text(l):
+    t = SUB_OVERRIDE.get(l) or FIXES.get(l) or LINES[l][2]
+    t = re.sub(r"\[[^\]]*\]", "", t)
+    t = t.replace("־", " ")                                   # maqaf -> space (never glue words)
+    t = "".join(c for c in t if not ("֑" <= c <= "ֽ" or "ֿ" <= c <= "ׇ"))  # niqqud only
+    t = t.replace("...", "…")
+    return " ".join(t.split())
+
+
+def chunks(text, maxc=40):
+    """Split into subtitle cards of <=2 lines x maxc chars, breaking at sentence then word boundaries."""
+    sents = re.findall(r"[^.?!…]+[.?!…]*", text)
+    cards, cur = [], ""
+    for snt in (x.strip() for x in sents if x.strip()):
+        if len(cur) + len(snt) + 1 <= 2 * maxc: cur = (cur + " " + snt).strip()
+        else:
+            if cur: cards.append(cur)
+            while len(snt) > 2 * maxc:
+                cut = snt.rfind(" ", 0, 2 * maxc); cards.append(snt[:cut]); snt = snt[cut + 1:]
+            cur = snt
+    if cur: cards.append(cur)
+    out = []
+    for c in cards:
+        if len(c) > maxc:
+            mid = len(c) // 2
+            cut = min((k for k in range(len(c)) if c[k] == " "), key=lambda k: abs(k - mid))
+            c = c[:cut] + "\\N" + c[cut + 1:]
+        out.append(c)
+    return out
+
+
+def ass_t(x):
+    h, r = divmod(max(0, x), 3600); m, s_ = divmod(r, 60)
+    return f"{int(h)}:{int(m):02d}:{s_:05.2f}"
+
+
+def srt_t(x):
+    h, r = divmod(x, 3600); m, s_ = divmod(r, 60)
+    return f"{int(h):02d}:{int(m):02d}:{int(s_):02d},{int((s_ % 1) * 1000):03d}"
+
+
+events = []
+for a, b, l in sorted(subs):
+    cards = chunks(sub_text(l)); total = sum(len(c) for c in cards); t0 = a
+    for c in cards:
+        t1 = t0 + (b - a) * len(c) / total
+        events.append((t0, t1 + (0.25 if c is cards[-1] else 0.0), c)); t0 = t1
+# avoid overlaps
+for k in range(len(events) - 1):
+    if events[k][1] > events[k + 1][0] - 0.04:
+        events[k] = (events[k][0], events[k + 1][0] - 0.04, events[k][2])
+
+ass = [
+    "[Script Info]", "ScriptType: v4.00+", f"PlayResX: {W}", f"PlayResY: {H}", "WrapStyle: 2", "",
+    "[V4+ Styles]",
+    "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, "
+    "Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding",
+    "Style: Default,Heebo,25,&H00FFFFFF,&H00FFFFFF,&H00341E10,&H96000000,-1,0,0,0,100,100,0,0,1,2.4,1.2,2,40,40,20,1",
+    "", "[Events]", "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text"]
+for a, b, c in events:
+    ass.append(f"Dialogue: 0,{ass_t(a)},{ass_t(b)},Default,,0,0,0,,{c}")
+open("episode01_he.ass", "w").write("\n".join(ass) + "\n")
 with open("episode01_he.srt", "w") as f:
-    for i, (a, b, txt) in enumerate(subs, 1):
-        f.write(f"{i}\n{ts(a)} --> {ts(b + 0.2)}\n‫{txt}‬\n\n")
+    for k, (a, b, c) in enumerate(events, 1):
+        f.write(f"{k}\n{srt_t(a)} --> {srt_t(b)}\n{c.replace(chr(92) + 'N', chr(10))}\n\n")
+print("subtitle cards:", len(events))
 
-# ---------- mux ----------
+# ---------- mux (subtitles burned in, plus soft track) ----------
 subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", "work/video.mp4", "-i", "work/audio.m4a",
-                "-i", "episode01_he.srt", "-map", "0:v", "-map", "1:a", "-map", "2:s", "-c:v", "libx264", "-preset", "slow", "-crf", "21", "-c:a", "copy",
-                "-c:s", "mov_text", "-metadata:s:s:0", "language=heb", "-metadata", f"title={TITLE} - פרק 1",
-                "-movflags", "+faststart", "episode01.mp4"], check=True)
+                "-i", "episode01_he.srt", "-filter_complex", "[0:v]subtitles=episode01_he.ass:fontsdir=fonts[v]",
+                "-map", "[v]", "-map", "1:a", "-map", "2:s", "-c:v", "libx264", "-preset", "slow", "-crf", "21",
+                "-c:a", "copy", "-c:s", "mov_text", "-metadata:s:s:0", "language=heb",
+                "-metadata", f"title={TITLE} - פרק 1", "-movflags", "+faststart", "episode01.mp4"], check=True)
 print("done", dur("episode01.mp4"))
