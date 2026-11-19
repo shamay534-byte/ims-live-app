@@ -27,7 +27,7 @@ def seg_of_raw(i):
         if i >= START[k]: return k
     return 1
 
-TRIM = [(7, 12.45, None), (10, 0.0, 9.58)]   # (scene, from u, to u)
+TRIM = [(10, 0.0, 9.58)]   # (scene, from u, to u)
 # ---------------- jump cuts: drop every pause (silence) from the source timeline
 def _keep():
     import wave
@@ -333,18 +333,95 @@ def g5(F, u):   # inside the cirrus
     popin(F, icon("cross_mark_3d.png", 110), 880, 900, u, 16.46, 18.0)
     popin(F, icon("droplet_3d.png", 120), 880, 900, u, 16.46, 18.0, alpha=0.75)
 
-def gB(F, u):   # why ice and not water: prism drops vs. the high white screen (cinematic b-roll)
-    popin(F, bigt("רגע, למה דווקא קרח?", 88, ICE), 540, 330, u, 0.1, 2.25, s0=0.3, back=2.6)
-    popin(F, bigt("כל טיפה = מנסרה קטנטנה", 78, WHITE), 540, 330, u, 2.3, 7.8, s0=0.3, back=2.6)
-    chip(F, u, 6.0, 7.8, "ככה נוצרת קשת", "rainbow_3d.png", "L")
-    popin(F, bigt("האור כבר מגיע אדום", 84, FIRE), 540, 330, u, 7.85, 12.5, s0=0.3, back=2.6)
-    chip(F, u, 10.4, 12.5, "צריך מסך גבוה", "sparkles_3d.png", "R")
-    popin(F, bigt("הצל של כדור הארץ", 84, ((200, 215, 255), (110, 130, 200), (10, 15, 50), (20, 30, 90))), 540, 330, u, 12.6, 16.7, s0=0.3, back=2.6)
-    chip(F, u, 13.6, 16.7, "ענני מים נמוכים מאפירים", "fog_3d.png", "L")
-    popin(F, bigt("צירוסים = מסך קולנוע ענק", 74, ICE), 540, 330, u, 16.75, 21.4, s0=0.3, back=2.6)
-    chip(F, u, 17.8, 21.4, "בגובה כמעט 10 ק״מ", "cloud_3d.png", "R")
-    popin(F, bigt("נצבעים באדום בוער!", 92, FIRE), 540, 330, u, 21.45, 23.6, s0=0.2, back=2.8)
-    for su in (7.8, 12.55, 16.7):   # flash between the shots
+SPEC = [(255, 40, 40), (255, 130, 20), (255, 230, 40), (60, 220, 90), (40, 150, 255), (90, 70, 255), (170, 60, 255)]
+
+def _seg(d, p0, p1, f, col, w):
+    if f <= 0: return None
+    x = p0[0] + (p1[0] - p0[0]) * min(f, 1); y = p0[1] + (p1[1] - p0[1]) * min(f, 1)
+    d.line((p0[0], p0[1], x, y), fill=col, width=w); return (x, y)
+
+def _glowlayer(im, a, F):
+    g = im.filter(ImageFilter.GaussianBlur(10))
+    layer_blit(F, g, a * 0.9); layer_blit(F, im.filter(ImageFilter.GaussianBlur(1.2)), a)
+
+def drop_diagram(F, u, t0, a):
+    """sphere drop: white ray in -> refract -> reflect off the back -> out as a colour fan at ~42 deg"""
+    cx, cy, R = 540, 960, 225
+    im = Image.new("RGBA", (W, H), (0, 0, 0, 0)); d = ImageDraw.Draw(im)
+    # glassy sphere
+    d.ellipse((cx - R, cy - R, cx + R, cy + R), fill=(150, 200, 255, 38), outline=(220, 240, 255, 210), width=5)
+    d.ellipse((cx - R * 0.55, cy - R * 0.78, cx - R * 0.05, cy - R * 0.42), fill=(255, 255, 255, 40))
+    q = clamp((u - t0) / 2.6)
+    E = (cx - 0.8 * R, cy - 0.6 * R); B = (cx + 0.96 * R, cy + 0.28 * R); X = (cx - 0.5 * R, cy + 0.866 * R)
+    _seg(d, (40, E[1]), E, q * 4, (255, 255, 255, 255), 8)
+    _seg(d, E, B, q * 4 - 1, (255, 250, 230, 230), 6)
+    _seg(d, B, X, q * 4 - 2, (255, 250, 230, 230), 6)
+    fq = clamp(q * 4 - 3)
+    if fq > 0:
+        for j, col in enumerate(SPEC):
+            ang = math.radians(36 + j * 2.2)
+            L = 520 * fq
+            d.line((X[0], X[1], X[0] - math.cos(ang) * L, X[1] + math.sin(ang) * L), fill=col + (235,), width=7)
+    _glowlayer(im, a, F)
+    if fq > 0.6:
+        F.blit(ltr("42°", 70, (255, 240, 200)), X[0] - 250, X[1] + 130, alpha=a * clamp((fq - 0.6) / 0.3))
+    if 0 < q * 4 - 2 < 1.2:
+        F.blit(soft_dot(46, (255, 255, 255)), B[0], B[1], alpha=a * 0.8 * (1 - abs(q * 4 - 2.4) / 1.2))
+
+def hex_diagram(F, u, t0, tp, tm, a):
+    """hexagonal ice plate: prism through two faces at 60 deg -> spectrum; flat face -> mirror reflection"""
+    cx, cy, R = 540, 960, 230
+    rot = math.sin(u * 0.6) * 4
+    im = Image.new("RGBA", (W, H), (0, 0, 0, 0)); d = ImageDraw.Draw(im)
+    V = [(cx + R * math.cos(math.radians(k * 60)), cy + R * math.sin(math.radians(k * 60))) for k in range(6)]
+    d.polygon(V, fill=(170, 225, 255, 45), outline=(230, 248, 255, 230))
+    d.line(V + [V[0]], fill=(235, 250, 255, 235), width=6)
+    for k in range(6):
+        d.line((cx, cy, V[k][0], V[k][1]), fill=(220, 240, 255, 40), width=2)
+    # prism ray: in through the lower-left face, out through the lower-right face (faces at 60 deg)
+    qp = clamp((u - tp) / 1.6)
+    Ein = (cx - 0.75 * R, cy + 0.433 * R); Eout = (cx + 0.75 * R, cy + 0.433 * R)
+    if qp > 0:
+        src = (Ein[0] - 420, Ein[1] - 420 * math.tan(math.radians(14)))
+        _seg(d, src, Ein, qp * 3, (255, 255, 255, 255), 8)
+        _seg(d, Ein, Eout, qp * 3 - 1, (255, 250, 235, 230), 6)
+        fq = clamp(qp * 3 - 2)
+        for j, col in enumerate(SPEC):
+            ang = math.radians(8 + j * 3.2)
+            L = 470 * fq
+            if fq > 0: d.line((Eout[0], Eout[1], Eout[0] + math.cos(ang) * L, Eout[1] - math.sin(ang) * L), fill=col + (235,), width=7)
+    # mirror ray: red sunset light hits the flat top face and bounces back
+    qm = clamp((u - tm) / 1.3)
+    P = (cx - 0.15 * R, cy - 0.866 * R)
+    if qm > 0:
+        src2 = (P[0] - 330, P[1] - 380)
+        _seg(d, src2, P, qm * 2, (255, 90, 60, 255), 8)
+        if qm > 0.5:
+            f2 = clamp(qm * 2 - 1)
+            d.line((P[0], P[1], P[0] + 330 * f2, P[1] - 380 * f2), fill=(255, 120, 80, 255), width=8)
+    im = im.rotate(rot, center=(cx, cy), resample=Image.BICUBIC)
+    _glowlayer(im, a, F)
+    if qm > 0.45:
+        fl = max(0.0, 1 - abs(qm - 0.55) / 0.35)
+        F.blit(soft_dot(70, (255, 170, 120)), P[0], P[1], alpha=a * fl)
+        F.blit(starflare(40), P[0], P[1], alpha=a * fl, rot=u * 30)
+    if qp > 0.75:
+        popin(F, bigt("מנסרה", 84, ((255, 255, 255), (190, 160, 255), (20, 10, 60), (40, 20, 110))), 850, 1250, u, tp + 1.2, 99, s0=0.4, top=False)
+    if qm > 0.6:
+        popin(F, bigt("מראה", 84, FIRE), 280, 590, u, tm + 0.8, 99, s0=0.4, top=False)
+
+def gB(F, u):   # why ice: a round drop vs a flat hexagonal crystal (prism + mirror), with animated diagrams
+    popin(F, bigt("למה דווקא קרח נצבע באדום?", 72, ICE), 540, 330, u, 1.6, 4.15, s0=0.3, back=2.6)
+    popin(F, bigt("טיפת מים = כדור", 84, ((210, 235, 255), (90, 170, 255), (8, 25, 70), (14, 45, 120))), 540, 330, u, 4.15, 10.6, s0=0.3, back=2.6)
+    wd = R.window(u, 4.3, 10.6, 0.35, 0.3)
+    if wd: drop_diagram(F, u, 5.6, wd[1] * 0.95)
+    chip(F, u, 7.3, 9.2, "רק בזווית אחת", "sparkles_3d.png", "R", y=590)
+    chip(F, u, 9.25, 10.6, "ככה נוצרת קשת", "rainbow_3d.png", "L", y=590)
+    popin(F, bigt("גביש קרח = משושה", 84, ICE), 540, 330, u, 10.7, 20.6, s0=0.3, back=2.6)
+    wh = R.window(u, 10.75, 20.6, 0.35, 0.3)
+    if wh: hex_diagram(F, u, 10.75, 14.0, 15.7, wh[1] * 0.95)
+    chip(F, u, 12.2, 14.0, "פאות ישרות", "ice_3d.png", "R", y=1290)
+    for su in (10.65,):
         if 0 <= u - su < 0.16:
             F.img += (255 - F.img) * (1 - (u - su) / 0.16) * 0.6
 
