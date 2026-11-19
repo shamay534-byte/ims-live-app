@@ -27,7 +27,7 @@ def seg_of_raw(i):
         if i >= START[k]: return k
     return 1
 
-TRIM = [(10, 0.0, 9.58)]   # (scene, from u, to u)
+TRIM = [(9, 0.0, None), (10, 0.0, 9.58)]   # (scene, from u, to u)
 # ---------------- jump cuts: drop every pause (silence) from the source timeline
 def _keep():
     import wave
@@ -44,7 +44,7 @@ def _keep():
             j = i
             while j < n and sil[j]: j += 1
             a0, a1 = i / 100 + 0.045, j / 100 - 0.045
-            if a1 - a0 >= 0.11:
+            if a1 - a0 >= 0.17:
                 f0, f1 = int(math.ceil(a0 * FPS)), int(a1 * FPS)
                 drop[f0:min(f1, endsrc)] = True
             i = j
