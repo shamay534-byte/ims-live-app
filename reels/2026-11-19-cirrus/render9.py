@@ -27,6 +27,7 @@ def seg_of_raw(i):
         if i >= START[k]: return k
     return 1
 
+TRIM = [(7, 12.45, None), (10, 0.0, 9.58)]   # (scene, from u, to u)
 # ---------------- jump cuts: drop every pause (silence) from the source timeline
 def _keep():
     import wave
@@ -49,8 +50,14 @@ def _keep():
             i = j
         else: i += 1
     drop[endsrc:] = False
+    for k_, u0_, u1_ in TRIM:
+        a_ = START[k_] + int(round(u0_ * FPS)); b_ = START[k_] + (NF[k_] if u1_ is None else int(round(u1_ * FPS)))
+        drop[a_:b_] = True
     return [i for i in range(NFR) if not drop[i]]
 OUT = _keep()
+FIRST = {}
+for _i in OUT:
+    FIRST.setdefault(seg_of_raw(_i), _i)
 # instant zoom punch alternating on every hard cut inside a scene
 PUNCH = {}
 _z = 0
@@ -342,7 +349,6 @@ def gB(F, u):   # why ice and not water: prism drops vs. the high white screen (
             F.img += (255 - F.img) * (1 - (u - su) / 0.16) * 0.6
 
 def g6(F, u):   # optical trick
-    if len(SPLICE6_) == 2: mirrors(F, u, SPLICE6_[0], SPLICE6_[1])
     popin(F, chapter("הטריק האופטי"), 540, 330, u, 0.0, 1.7, s0=0.5)
     chip(F, u, 0.4, 3.9, "אנחנו כבר בצל", "crescent_moon_3d.png", "L")
     chip(F, u, 6.07, 9.6, "הצירוסים עדיין באור", "cloud_3d.png", "R")
@@ -360,22 +366,7 @@ def g7(F, u):   # why now
     for k in range(5):
         popin(F, icon("sparkles_3d.png", 80), 200 + k * 170, 560 + (k % 2) * 60, u, 13.5 + k * 0.08, 15.0, behind=True)
 
-def g8(F, u):   # punch line + follow (continues through the end hold)
-    popin(F, bigt("כשהשמיים נדלקים באדום", 84, FIRE), 540, 330, u, 1.6, 3.95, s0=0.3, back=2.6)
-    w = R.window(u, 4.0, 6.65, 0.2, 0.25)
-    if w:
-        pin, a = w
-        q = clamp((u - 4.0) / 1.0)
-        for k, (x, y, ph, s_, fr) in enumerate(CRY[:18]):
-            ang = k / 18 * 6.28 + u * 0.4
-            F.blit(crystal(s_ // 2 + 40), 540 + math.cos(ang) * 470 * eoc(q), 430 + math.sin(ang) * 230 * eoc(q),
-                   alpha=a * (1 - q * 0.5), rot=u * 90, behind=True)
-        F.blit(R.glow(700, (255, 120, 40)), 540, 430, alpha=a * 0.5, behind=True)
-        _popin(F, icon_shadowed("fire_3d.png", 170)[0], 150, 640, u, 4.6, 6.65, behind=True, bob=10)
-        _popin(F, icon_shadowed("ice_3d.png", 160)[0], 930, 640, u, 4.0, 6.65, behind=True, bob=10, rot=math.sin(u * 5) * 8)
-    popin(F, bigt("קרח", 190, ICE), 540, 340, u, 4.0, 6.65, s0=0.2, back=2.8)
-    popin(F, bigt("שבוער!", 150, FIRE), 540, 520, u, 4.7, 6.65, s0=0.2, back=2.8)
-    chip(F, u, 6.72, 9.45, "גם בסוף השבוע הקרוב!", "sunset_3d.png", "R")
+def g8(F, u):   # follow me (continues through the end hold)
     if u > 9.4:
         follow(F, u, 9.4, 10.35)
 
@@ -481,7 +472,7 @@ def render(i, raw):
     img = raw.astype(np.float32)
     # slow cinematic push-in per scene (+ final hold drift)
     zb, ay = ZBASE.get(k, (1.0, 700))
-    z = zb * (1.09 if PUNCH.get(i, 0) else 1.0) + 0.05 * (u / max(DUR[k], 1)) + (0.03 * clamp(ue / END_HOLD) if end else 0)
+    z = zb * (1.09 if PUNCH.get(i, 0) else 1.0) + 0.05 * (u / max(DUR[k], 1)) + (0.10 * clamp((u - SPLICE6[0]) / (SPLICE6[1] - SPLICE6[0])) * (u < SPLICE6[1]) if (k == 8 and len(SPLICE6) == 2 and u >= SPLICE6[0]) else 0) + (0.03 * clamp(ue / END_HOLD) if end else 0)
     M = np.array([[z, 0, 540 - z * 540], [0, z, ay - z * ay]], np.float32)
     img = cv2.warpAffine(img, M, (W, H), borderMode=cv2.BORDER_REFLECT)
     pm = cv2.warpAffine(cv2.resize(np.asarray(P[jj]), (W, H)).astype(np.float32) / 255, M, (W, H))
@@ -494,8 +485,9 @@ def render(i, raw):
     if not end:
         GFX[k](F, u)
         # flash transition into every new scene
-        if k > 1 and u < 0.22:
-            F.img += (255 - F.img) * (1 - u / 0.22) * 0.85
+        uf = (i - FIRST.get(k, i)) / FPS
+        if k > 1 and 0 <= uf < 0.22:
+            F.img += (255 - F.img) * (1 - uf / 0.22) * 0.85
         if k == 8:   # flash in/out of the inside-the-cirrus mirrors shot
             for su in SPLICE6:
                 if 0 <= u - su < 0.2:
