@@ -57,7 +57,8 @@ def pad(d):
     s=lp(s,0.05); env=np.minimum(1,t/3)*np.minimum(1,(d-t)/2); return s*env/np.abs(s).max()
 def add(t,s,g):
     t=s2o(t); i=int(max(0,t)*SR); n=min(len(s),N-i); out[i:i+n]+=s[:n]*g
-add(0,pad(TOTAL-0.05),0.05)
+# music bed replaces the pad
+# add(0,pad(TOTAL-0.05),0.05)
 add(0,whoosh(0.5),0.15)
 for k in range(2,NS+1): add(S[k]-0.12,whoosh(0.5),0.16)
 add(S[5]-0.05,boom(),0.12)

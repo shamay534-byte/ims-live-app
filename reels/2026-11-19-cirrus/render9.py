@@ -43,8 +43,8 @@ def _keep():
         if sil[i]:
             j = i
             while j < n and sil[j]: j += 1
-            a0, a1 = i / 100 + 0.05, j / 100 - 0.05
-            if a1 - a0 >= 0.17:
+            a0, a1 = i / 100 + 0.045, j / 100 - 0.045
+            if a1 - a0 >= 0.11:
                 f0, f1 = int(math.ceil(a0 * FPS)), int(a1 * FPS)
                 drop[f0:min(f1, endsrc)] = True
             i = j
