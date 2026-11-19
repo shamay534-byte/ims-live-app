@@ -11,7 +11,7 @@ text_layer, rounded, icon, icon_shadowed, to_np, A = R.text_layer, R.rounded, R.
 D = os.path.join(HERE, "r8")
 W, H, FPS = 1080, 1920, 30
 END_HOLD = 1.8
-NS = 8
+NS = 9
 
 # ------------------------------------------------------------------ timeline
 DUR = {k: float(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0",
@@ -161,6 +161,53 @@ def crystal(size):
     g = im.filter(ImageFilter.GaussianBlur(size / 25)); gl = Image.new("RGBA", im.size, (120, 210, 255, 0)); gl.putalpha(g.split()[3].point(lambda v: int(v * 0.9)))
     return to_np(Image.alpha_composite(gl, im))
 
+@functools.lru_cache(None)
+def hexplate(size, sq):
+    # a flat hexagonal ice plate seen at an angle (sq = horizontal squash level 1..8)
+    S = size * 2 + 8
+    im = Image.new("RGBA", (S, S), (0, 0, 0, 0)); d = ImageDraw.Draw(im)
+    c = S / 2; pts = [(c + size * math.cos(k * math.pi / 3), c + size * math.sin(k * math.pi / 3)) for k in range(6)]
+    d.polygon(pts, fill=(255, 200, 175, 45), outline=(255, 235, 220, 150))
+    d.line(pts + [pts[0]], fill=(255, 240, 230, 140), width=max(1, size // 16))
+    d.polygon([(c, c - size * 0.6), (c + size * 0.5, c), (c, c + size * 0.6)], fill=(255, 255, 255, 55))
+    im = im.resize((max(4, int(S * sq / 8)), S), Image.LANCZOS)
+    g = im.filter(ImageFilter.GaussianBlur(3)); gl = Image.new("RGBA", im.size, (255, 120, 80, 0)); gl.putalpha(g.split()[3])
+    return to_np(Image.alpha_composite(gl, im))
+
+@functools.lru_cache(None)
+def starflare(r):
+    S = r * 4; im = Image.new("RGBA", (S, S), (0, 0, 0, 0)); d = ImageDraw.Draw(im); c = S / 2
+    d.line((c - r * 1.9, c, c + r * 1.9, c), fill=(255, 235, 200, 255), width=3)
+    d.line((c, c - r * 1.9, c, c + r * 1.9), fill=(255, 235, 200, 255), width=3)
+    d.line((c - r, c - r, c + r, c + r), fill=(255, 200, 160, 160), width=2)
+    d.line((c - r, c + r, c + r, c - r), fill=(255, 200, 160, 160), width=2)
+    im = im.filter(ImageFilter.GaussianBlur(1.2))
+    return to_np(im)
+
+_mr = random.Random(23)
+MIR = [(_mr.uniform(30, 1050), _mr.uniform(240, 1700), _mr.choice([12, 15, 19, 24, 30, 38]), _mr.uniform(0, 6.28),
+        _mr.uniform(0.6, 1.6) * _mr.choice([-1, 1]), _mr.random() < 0.5) for _ in range(70)]
+
+def mirrors(F, u, u0, u1):
+    a = clamp((u - u0) / 0.35) * (1 - clamp((u - (u1 - 0.3)) / 0.3))
+    if a <= 0: return
+    tt = u - u0
+    ray = Image.new("RGBA", (W, H), (0, 0, 0, 0)); dr = ImageDraw.Draw(ray); any_ray = False
+    for (x, y, sz, ph, spin, fr) in MIR:
+        xx = x + math.sin(tt * 0.5 + ph) * 40 - tt * 14 * (1 if x > 540 else -1)
+        yy = y - tt * (18 + sz * 0.35)
+        flip = abs(math.cos(tt * spin + ph)); sq = max(1, int(round(flip * 8)))
+        fl = max(0.0, math.sin(tt * 2.3 + ph * 3)) ** 10
+        behind = bool(fr) or near_head(F, xx, yy, sz * 3.4 + 20)
+        F.blit(hexplate(sz, sq), xx, yy, alpha=a * (0.35 + 0.4 * flip), rot=math.degrees(ph) % 60, behind=behind)
+        if fl > 0.05:
+            F.blit(soft_dot(sz * 1.3, (255, 150, 90)), xx, yy, alpha=a * fl * 0.8, behind=behind)
+            F.blit(starflare(int(sz * 1.6)), xx, yy, alpha=a * fl, rot=tt * 20, behind=behind)
+            if fl > 0.35:   # the plate bounces a red ray back towards him (drawn behind his body)
+                dr.line((xx, yy, 540 + (xx - 540) * 0.25, 760 + (yy - 760) * 0.25), fill=(255, 120, 90, int(150 * fl)), width=5); any_ray = True
+    if any_ray:
+        layer_blit(F, ray.filter(ImageFilter.GaussianBlur(2.5)), a, behind=True)
+
 def near_head(F, x, y, r):
     x, y, r = int(x), int(y), int(r)
     return bool(F.hm[max(0, y - r):max(0, y + r), max(0, x - r):max(0, x + r)].any())
@@ -220,28 +267,22 @@ def g2(F, u):   # midday: short direct path, blue scatters
 
 WAVES = [((150, 90, 255), 0.30), ((60, 130, 255), 0.42), ((60, 210, 220), 0.55), ((120, 230, 90), 0.68),
          ((255, 220, 60), 1.0), ((255, 150, 40), 1.0), ((255, 90, 140), 1.0), ((235, 40, 40), 1.0)]
-def g3(F, u):   # sunset: long path, only long waves arrive
-    w = R.window(u, 0.2, 9.6, 0.4, 0.3)
+def g3(F, u):   # sunset: long path through the atmosphere
+    chip(F, u, 2.36, 5.5, "השמש צונחת נמוך", "sunset_3d.png", "L")
+    chip(F, u, 5.64, 9.4, "מסלול מכשולים ארוך", "dashing_away_3d.png", "R")
+
+def gM(F, u):   # the light marathon: blue drops out, only the long red waves reach the finish line
+    w = R.window(u, 0.15, 9.3, 0.3, 0.3)
     if w:
         _, a = w
-        q0 = clamp((u - 5.4) / 0.4)
-        if q0 > 0:
-            for j, (col, surv) in enumerate(WAVES):
-                y0 = 520 + j * 26
-                im2 = Image.new("RGBA", (W, H), (0, 0, 0, 0)); d2 = ImageDraw.Draw(im2)
-                prog = clamp((u - 5.4 - j * 0.05) / 3.0)
-                xs = np.linspace(980, 980 - 900 * prog, 120)
-                fade = np.clip((xs - (980 - 900 * surv)) / 80, 0, 1) if surv < 1 else np.ones_like(xs)
-                pts = [(x, y0 + 12 * math.sin((x / (18 + j * 4)) + u * 9)) for x in xs]
-                for p1, p2, f in zip(pts, pts[1:], fade):
-                    if f > 0.02: d2.line((p1, p2), fill=col + (int(255 * f),), width=6)
-                layer_blit(F, im2.filter(ImageFilter.GaussianBlur(1)), a * q0, behind=False if False else True)
-            if u > 8.0:
-                popin(F, icon("chequered_flag_3d.png", 110), 120, 600, u, 8.0, 9.6, s0=0.3)
-    chip(F, u, 2.36, 5.5, "השמש צונחת נמוך", "sunset_3d.png", "L")
-    chip(F, u, 5.64, 8.3, "מסלול מכשולים ארוך", "dashing_away_3d.png", "R")
-    popin(F, bigt("הכחול לא שורד את המרתון", 64, ((200, 220, 255), (110, 140, 255), (10, 20, 70), (20, 40, 120))), 540, 330, u, 6.6, 8.1, s0=0.4)
-    popin(F, bigt("רק כתום, ורוד ואדום", 82, FIRE), 540, 330, u, 8.15, 9.6, s0=0.3, back=2.6)
+        # the survivors flash as they cross the finish line
+        fq = clamp((u - 3.9) / 0.5)
+        if fq > 0:
+            F.blit(R.glow(380, (255, 120, 60)), 110, 700, alpha=a * fq * 0.7 * (0.75 + 0.25 * math.sin(u * 8)), behind=True)
+    popin(F, bigt("הכחול לא שורד את המרתון", 66, ((200, 220, 255), (110, 140, 255), (10, 20, 70), (20, 40, 120))), 540, 330, u, 0.7, 3.0, s0=0.4)
+    popin(F, bigt("מי מגיע לקו הסיום?", 84, WHITE), 540, 330, u, 3.05, 5.7, s0=0.3, back=2.6)
+    popin(F, bigt("רק כתום, ורוד ואדום", 84, FIRE), 540, 330, u, 5.72, 9.3, s0=0.3, back=2.6)
+    chip(F, u, 4.5, 7.3, "הגלים הארוכים", "trophy_3d.png", "L")
 
 def g4(F, u):   # meet the cirrus
     popin(F, chapter("ענני הצירוס"), 540, 330, u, 0.0, 3.3, s0=0.5)
@@ -286,6 +327,7 @@ def g5(F, u):   # inside the cirrus
     popin(F, icon("droplet_3d.png", 120), 880, 900, u, 16.46, 18.0, alpha=0.75)
 
 def g6(F, u):   # optical trick
+    if len(SPLICE6_) == 2: mirrors(F, u, SPLICE6_[0], SPLICE6_[1])
     popin(F, chapter("הטריק האופטי"), 540, 330, u, 0.0, 1.7, s0=0.5)
     chip(F, u, 0.4, 3.9, "אנחנו כבר בצל", "crescent_moon_3d.png", "L")
     chip(F, u, 6.07, 9.6, "הצירוסים עדיין באור", "cloud_3d.png", "R")
@@ -355,10 +397,11 @@ def follow(F, u, t0, tap):
 
 ZBASE = {}
 try:
-    SPLICE6 = [int(v) / FPS for v in open(os.path.join(D, "splice6.txt")).read().split()]
+    SPLICE6 = [int(v) / FPS for v in open(os.path.join(D, "splice7.txt")).read().split()]
 except Exception:
-    SPLICE6 = []   # crop the leftover balcony chair
-GFX = {1: g1, 2: g2, 3: g3, 4: g4, 5: g5, 6: g6, 7: g7, 8: g8}
+    SPLICE6 = []
+SPLICE6_ = SPLICE6
+GFX = {1: g1, 2: g2, 3: g3, 4: gM, 5: g4, 6: g5, 7: g6, 8: g7, 9: g8}
 
 # ------------------------------------------------------------------ subtitles
 FIXW = {"כבישי": "גבישי", "וכבישי": "וגבישי", "הכרך": "הקרח", "-6": "6", "-7": "7", "5": "5"}
@@ -432,13 +475,13 @@ def render(i, raw):
     hm = cv2.dilate((hm > 90).astype(np.uint8), np.ones((25, 25), np.uint8)) > 0
     img *= vign()
     F = R.Frame(img, pm, hm)
-    TOPQ.clear(); CUR_PAL[0] = ICE if k in (2, 4, 5) else FIRE
+    TOPQ.clear(); CUR_PAL[0] = ICE if k in (2, 5, 6) else FIRE
     if not end:
         GFX[k](F, u)
         # flash transition into every new scene
         if k > 1 and u < 0.22:
             F.img += (255 - F.img) * (1 - u / 0.22) * 0.85
-        if k == 6:   # flash in/out of the inside-the-cirrus mirrors shot
+        if k == 7:   # flash in/out of the inside-the-cirrus mirrors shot
             for su in SPLICE6:
                 if 0 <= u - su < 0.2:
                     F.img += (255 - F.img) * (1 - (u - su) / 0.2) * 0.8
