@@ -2,7 +2,7 @@ import sys, subprocess, numpy as np, os
 import mediapipe as mp
 from mediapipe.tasks.python import vision, BaseOptions
 D=os.path.dirname(os.path.abspath(__file__))
-k=int(sys.argv[1]); url=sys.argv[2]
+k=sys.argv[1]; url=sys.argv[2]
 raw=f"{D}/out/raw{k}.mp4"
 subprocess.run(["curl","-sSL","-o",raw,url],check=True)
 din=float(subprocess.run(["ffprobe","-v","error","-show_entries","format=duration","-of","csv=p=0",f"{D}/seg/s{k}.mp4"],capture_output=True,text=True).stdout)
