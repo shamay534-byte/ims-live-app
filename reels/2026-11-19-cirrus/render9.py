@@ -21,6 +21,43 @@ for k in range(1, 8): START[k] = acc; acc += NF[k]
 NFR = acc + int(END_HOLD * FPS)
 TOTAL = NFR / FPS
 
+def seg_of_raw(i):
+    for k in range(7, 0, -1):
+        if i >= START[k]: return k
+    return 1
+
+# ---------------- jump cuts: drop every pause (silence) from the source timeline
+def _keep():
+    import wave
+    w = wave.open(os.path.join(D, "voice.wav")); sr = w.getframerate()
+    a = np.frombuffer(w.readframes(w.getnframes()), np.int16).reshape(-1, 2).astype(np.float32).mean(1)
+    hop = sr // 100; n = len(a) // hop
+    rms = np.sqrt((a[:n * hop].reshape(n, hop) ** 2).mean(1))
+    sil = rms < 1300
+    endsrc = START[7] + NF[7]
+    drop = np.zeros(NFR, bool)
+    i = 0
+    while i < n:
+        if sil[i]:
+            j = i
+            while j < n and sil[j]: j += 1
+            a0, a1 = i / 100 + 0.05, j / 100 - 0.05
+            if a1 - a0 >= 0.17:
+                f0, f1 = int(math.ceil(a0 * FPS)), int(a1 * FPS)
+                drop[f0:min(f1, endsrc)] = True
+            i = j
+        else: i += 1
+    drop[endsrc:] = False
+    return [i for i in range(NFR) if not drop[i]]
+OUT = _keep()
+# instant zoom punch alternating on every hard cut inside a scene
+PUNCH = {}
+_z = 0
+for n_, i_ in enumerate(OUT):
+    if n_ and i_ != OUT[n_ - 1] + 1:
+        _z = 0 if seg_of_raw(i_) != seg_of_raw(OUT[n_ - 1]) else 1 - _z
+    PUNCH[i_] = _z
+
 def seg_of(i):
     for k in range(7, 0, -1):
         if i >= START[k]: return k, (i - START[k]) / FPS
@@ -119,25 +156,6 @@ def g1(F, u):   # hook
 
 def g2(F, u):   # midday: short direct path, blue scatters
     popin(F, chapter("הפיזיקה בקצב"), 540, 330, u, 0.0, 1.7, s0=0.5)
-    w = R.window(u, 0.9, 7.3, 0.4, 0.3)
-    if w:
-        _, a = w
-        sx, sy = 880, 420; tx, ty = 560, 980
-        F.blit(R.glow(380, (255, 230, 140)), sx, sy, alpha=a * 0.7, behind=True)
-        F.blit(icon_shadowed("sun_3d.png", 190)[0], sx, sy, alpha=a, behind=True, rot=u * 10)
-        im = Image.new("RGBA", (W, H), (0, 0, 0, 0)); d = ImageDraw.Draw(im)
-        q = clamp((u - 1.0) / 1.0)
-        ex, ey = sx + (tx - sx) * q, sy + (ty - sy) * q
-        d.line((sx, sy, ex, ey), fill=(255, 245, 200, 230), width=10)
-        layer_blit(F, im.filter(ImageFilter.GaussianBlur(2)), a, behind=True)
-        if u > 4.4:   # Rayleigh: blue light scattering in all directions from the beam
-            for k in range(40):
-                f = (k / 40 + u * 0.35) % 1.0
-                bx, by = sx + (tx - sx) * (k / 40), sy + (ty - sy) * (k / 40)
-                ang = k * 2.39
-                r = 30 + 260 * f
-                F.blit(soft_dot(9, (90, 170, 255), 1), bx + math.cos(ang) * r, by + math.sin(ang) * r,
-                       alpha=a * (1 - f) * clamp((u - 4.4) / 0.5), behind=True)
     chip(F, u, 1.0, 4.3, "דרך קצרה וישירה", "sun_3d.png", "L")
     chip(F, u, 4.44, 5.6, "האור הכחול מתפזר", "sparkles_3d.png", "L")
     popin(F, bigt("בום!", 150, WHITE), 540, 420, u, 5.62, 6.5, s0=0.2, back=3)
@@ -149,13 +167,6 @@ def g3(F, u):   # sunset: long path, only long waves arrive
     w = R.window(u, 0.2, 9.6, 0.4, 0.3)
     if w:
         _, a = w
-        F.blit(R.glow(420, (255, 160, 60)), 930, 760, alpha=a * 0.6, behind=True)
-        im = Image.new("RGBA", (W, H), (0, 0, 0, 0)); d = ImageDraw.Draw(im)
-        # atmosphere band (arc) the light has to cross
-        for k in range(6):
-            r0 = 1500 + k * 26
-            d.arc((540 - r0, 1700 - r0 + 400, 540 + r0, 1700 + r0 + 400), 230, 310, fill=(255, 200, 150, 40 + k * 8), width=14)
-        layer_blit(F, im, a * clamp((u - 0.6) / 0.6), behind=True)
         q0 = clamp((u - 5.4) / 0.4)
         if q0 > 0:
             for j, (col, surv) in enumerate(WAVES):
@@ -219,26 +230,6 @@ def g5(F, u):   # inside the cirrus
 
 def g6(F, u):   # optical trick
     popin(F, chapter("הטריק האופטי"), 540, 330, u, 0.0, 1.7, s0=0.5)
-    w = R.window(u, 1.5, 22.8, 0.5, 0.4)
-    if w:
-        _, a = w
-        im = Image.new("RGBA", (W, H), (0, 0, 0, 0)); d = ImageDraw.Draw(im)
-        hy = 900
-        # last red rays from the sun below the horizon -> up to the cirrus -> down to us
-        q = clamp((u - 5.9) / 1.6)
-        if q > 0:
-            sx, sy = 1080, hy + 60; cx, cy = 700, 360
-            ex, ey = sx + (cx - sx) * q, sy + (cy - sy) * q
-            d.line((sx, sy, ex, ey), fill=(255, 80, 60, 230), width=9)
-            if u > 13.0:
-                q2 = clamp((u - 13.0) / 1.6)
-                d.line((cx, cy, cx + (380 - cx) * q2, cy + (900 - cy) * q2), fill=(255, 140, 120, 220), width=7)
-        layer_blit(F, im.filter(ImageFilter.GaussianBlur(2)), a, behind=True)
-        if u > 7.3:   # cirrus band glowing red from below
-            gq = clamp((u - 7.3) / 1.0)
-            F.blit(R.glow(520, (255, 70, 60)), 700, 360, alpha=a * gq * 0.8, behind=True)
-            for k in range(9):
-                F.blit(crystal(46), 520 + k * 45, 350 + math.sin(k + u * 2) * 18, alpha=a * gq * 0.9, rot=u * 40, behind=True)
     chip(F, u, 0.4, 3.9, "אנחנו כבר בצל", "crescent_moon_3d.png", "L")
     chip(F, u, 6.07, 9.6, "הצירוסים עדיין באור", "cloud_3d.png", "R")
     popin(F, bigt("מיליארדי מראות זעירות", 76, ICE), 540, 330, u, 13.4, 16.8, s0=0.3)
@@ -295,7 +286,7 @@ def follow(F, u, t0, tap):
         ha = clamp((u - (tap - 0.6)) / 0.15) * (1 - clamp((u - tap - 0.6) / 0.3))
         F.blit(icon_shadowed("backhand_index_pointing_up_3d_default.png", 120, 8, 8, 0.4)[0], 540 + bx + 30, hy, alpha=ha)
 
-ZBASE = {2: (1.26, 450), 3: (1.26, 450), 6: (1.26, 450), 7: (1.26, 450)}   # crop the leftover balcony chair
+ZBASE = {}   # crop the leftover balcony chair
 GFX = {1: g1, 2: g2, 3: g3, 4: g4, 5: g5, 6: g6, 7: g7}
 
 # ------------------------------------------------------------------ subtitles
@@ -345,7 +336,7 @@ def subtitles(F, t):
 def vign():
     yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
     v = 1 - 0.28 * (((xx - W / 2) / (W / 2)) ** 2 + ((yy - H / 2) / (H / 1.7)) ** 2)
-    g = np.clip(1 - 0.45 * np.clip((yy - 1330) / 590, 0, 1), 0, 1)
+    g = np.clip(1 - 0.30 * np.clip((yy - 1330) / 590, 0, 1), 0, 1)
     return (np.clip(v, 0.65, 1) * g)[..., None]
 
 def render(i, raw):
@@ -361,7 +352,7 @@ def render(i, raw):
     img = raw.astype(np.float32)
     # slow cinematic push-in per scene (+ final hold drift)
     zb, ay = ZBASE.get(k, (1.0, 700))
-    z = zb + 0.06 * (u / max(DUR[k], 1)) + (0.03 * clamp(ue / END_HOLD) if end else 0)
+    z = zb * (1.09 if PUNCH.get(i, 0) else 1.0) + 0.05 * (u / max(DUR[k], 1)) + (0.03 * clamp(ue / END_HOLD) if end else 0)
     M = np.array([[z, 0, 540 - z * 540], [0, z, ay - z * ay]], np.float32)
     img = cv2.warpAffine(img, M, (W, H), borderMode=cv2.BORDER_REFLECT)
     pm = cv2.warpAffine(cv2.resize(np.asarray(P[jj]), (W, H)).astype(np.float32) / 255, M, (W, H))
@@ -384,23 +375,25 @@ def render(i, raw):
     return F.img.astype(np.uint8), F.head_overlap
 
 def frames_iter(o0, o1):
-    """yield (i, raw) for output frames o0..o1 from the per-scene upscaled clips"""
-    last = None; cur = None; dec = None
-    for i in range(o0, o1):
+    """yield (i, raw) for output frames o0..o1 (indices into OUT) from the per-scene clips"""
+    last = None; cur = None; dec = None; pos = None
+    for o in range(o0, o1):
+        i = OUT[o]
         if i >= START[7] + NF[7]:
-            if last is None:
+            if last is None or cur != "end":
                 b = subprocess.run(["ffmpeg", "-v", "error", "-sseof", "-0.05", "-i", os.path.join(D, "out", "c7.mp4"), "-frames:v", "1",
                                     "-f", "rawvideo", "-pix_fmt", "rgb24", "-"], capture_output=True).stdout
-                last = np.frombuffer(b[:W * H * 3], np.uint8).reshape(H, W, 3)
+                last = np.frombuffer(b[:W * H * 3], np.uint8).reshape(H, W, 3); cur = "end"
             yield i, last; continue
-        k, u = seg_of(i)
-        if cur != k:
+        k, u = seg_of(i); j = i - START[k]
+        if cur != k or j < pos:
             if dec: dec.kill()
-            j0 = i - START[k]
-            dec = subprocess.Popen(["ffmpeg", "-v", "error", "-ss", f"{j0 / FPS:.4f}", "-i", os.path.join(D, "out", f"c{k}.mp4"),
+            dec = subprocess.Popen(["ffmpeg", "-v", "error", "-ss", f"{j / FPS:.4f}", "-i", os.path.join(D, "out", f"c{k}.mp4"),
                                     "-f", "rawvideo", "-pix_fmt", "rgb24", "-"], stdout=subprocess.PIPE)
-            cur = k
-        b = dec.stdout.read(W * H * 3)
+            cur = k; pos = j
+        while pos < j:
+            dec.stdout.read(W * H * 3); pos += 1
+        b = dec.stdout.read(W * H * 3); pos += 1
         if len(b) == W * H * 3: last = np.frombuffer(b, np.uint8).reshape(H, W, 3)
         yield i, last
     if dec: dec.kill()
@@ -420,14 +413,14 @@ if __name__ == "__main__":
     if sys.argv[1] == "still":
         outs = []
         for ts in sys.argv[3:]:
-            i = int(round(float(ts) * FPS))
-            raw = next(frames_iter(i, i + 1))[1]
+            o_ = min(int(round(float(ts) * FPS)), len(OUT) - 1); i = OUT[o_]
+            raw = next(frames_iter(o_, o_ + 1))[1]
             o, ov = render(i, raw); print(ts, "overlap", ov)
             outs.append(Image.fromarray(o).resize((360, 640), Image.LANCZOS))
         c = Image.new("RGB", (360 * len(outs), 640))
         for k, im in enumerate(outs): c.paste(im, (360 * k, 0))
         c.save(sys.argv[2], quality=90)
     elif sys.argv[1] == "info":
-        print("DUR", DUR, "START", START, "NFR", NFR, "TOTAL", TOTAL)
+        print("DUR", DUR, "START", START, "NFR", NFR, "TOTAL", TOTAL, "OUT", len(OUT), len(OUT) / FPS)
     else:
         run(int(sys.argv[2]), int(sys.argv[3]), sys.argv[4])
