@@ -11,7 +11,7 @@ text_layer, rounded, icon, icon_shadowed, to_np, A = R.text_layer, R.rounded, R.
 D = os.path.join(HERE, "r8")
 W, H, FPS = 1080, 1920, 30
 END_HOLD = 1.8
-NS = 9
+NS = 10
 
 # ------------------------------------------------------------------ timeline
 DUR = {k: float(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0",
@@ -326,6 +326,21 @@ def g5(F, u):   # inside the cirrus
     popin(F, icon("cross_mark_3d.png", 110), 880, 900, u, 16.46, 18.0)
     popin(F, icon("droplet_3d.png", 120), 880, 900, u, 16.46, 18.0, alpha=0.75)
 
+def gB(F, u):   # why ice and not water: prism drops vs. the high white screen (cinematic b-roll)
+    popin(F, bigt("רגע, למה דווקא קרח?", 88, ICE), 540, 330, u, 0.1, 2.25, s0=0.3, back=2.6)
+    popin(F, bigt("כל טיפה = מנסרה קטנטנה", 78, WHITE), 540, 330, u, 2.3, 7.8, s0=0.3, back=2.6)
+    chip(F, u, 6.0, 7.8, "ככה נוצרת קשת", "rainbow_3d.png", "L")
+    popin(F, bigt("האור כבר מגיע אדום", 84, FIRE), 540, 330, u, 7.85, 12.5, s0=0.3, back=2.6)
+    chip(F, u, 10.4, 12.5, "צריך מסך גבוה", "sparkles_3d.png", "R")
+    popin(F, bigt("הצל של כדור הארץ", 84, ((200, 215, 255), (110, 130, 200), (10, 15, 50), (20, 30, 90))), 540, 330, u, 12.6, 16.7, s0=0.3, back=2.6)
+    chip(F, u, 13.6, 16.7, "ענני מים נמוכים מאפירים", "fog_3d.png", "L")
+    popin(F, bigt("צירוסים = מסך קולנוע ענק", 74, ICE), 540, 330, u, 16.75, 21.4, s0=0.3, back=2.6)
+    chip(F, u, 17.8, 21.4, "בגובה כמעט 10 ק״מ", "cloud_3d.png", "R")
+    popin(F, bigt("נצבעים באדום בוער!", 92, FIRE), 540, 330, u, 21.45, 23.6, s0=0.2, back=2.8)
+    for su in (7.8, 12.55, 16.7):   # flash between the shots
+        if 0 <= u - su < 0.16:
+            F.img += (255 - F.img) * (1 - (u - su) / 0.16) * 0.6
+
 def g6(F, u):   # optical trick
     if len(SPLICE6_) == 2: mirrors(F, u, SPLICE6_[0], SPLICE6_[1])
     popin(F, chapter("הטריק האופטי"), 540, 330, u, 0.0, 1.7, s0=0.5)
@@ -397,11 +412,11 @@ def follow(F, u, t0, tap):
 
 ZBASE = {}
 try:
-    SPLICE6 = [int(v) / FPS for v in open(os.path.join(D, "splice7.txt")).read().split()]
+    SPLICE6 = [int(v) / FPS for v in open(os.path.join(D, "splice8.txt")).read().split()]
 except Exception:
     SPLICE6 = []
 SPLICE6_ = SPLICE6
-GFX = {1: g1, 2: g2, 3: g3, 4: gM, 5: g4, 6: g5, 7: g6, 8: g7, 9: g8}
+GFX = {1: g1, 2: g2, 3: g3, 4: gM, 5: g4, 6: g5, 7: gB, 8: g6, 9: g7, 10: g8}
 
 # ------------------------------------------------------------------ subtitles
 FIXW = {"כבישי": "גבישי", "וכבישי": "וגבישי", "הכרך": "הקרח", "-6": "6", "-7": "7", "5": "5"}
@@ -481,7 +496,7 @@ def render(i, raw):
         # flash transition into every new scene
         if k > 1 and u < 0.22:
             F.img += (255 - F.img) * (1 - u / 0.22) * 0.85
-        if k == 7:   # flash in/out of the inside-the-cirrus mirrors shot
+        if k == 8:   # flash in/out of the inside-the-cirrus mirrors shot
             for su in SPLICE6:
                 if 0 <= u - su < 0.2:
                     F.img += (255 - F.img) * (1 - (u - su) / 0.2) * 0.8

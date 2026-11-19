@@ -2,7 +2,7 @@ import numpy as np, wave
 from scipy.signal import lfilter
 SR=48000; rng=np.random.default_rng(9)
 import subprocess as _sp
-NS=9; START={}; _acc=0
+NS=10; START={}; _acc=0
 for k in range(1,NS+1):
     _d=float(_sp.run(["ffprobe","-v","error","-show_entries","format=duration","-of","csv=p=0",f"r8/seg/s{k}.mp4"],capture_output=True,text=True).stdout)
     START[k]=_acc; _acc+=int(round(_d*30))
@@ -62,15 +62,17 @@ add(0,whoosh(0.5),0.15)
 for k in range(2,NS+1): add(S[k]-0.12,whoosh(0.5),0.16)
 add(S[5]-0.05,boom(),0.12)
 add(7.85,shimmer(),0.13); add(7.85,boom(),0.1)
-CH={1:[4.1],2:[1.0,4.44],3:[2.36,5.64],4:[4.5],5:[6.1],6:[0.94,3.48,7.2,11.94],7:[0.4,6.07,16.5],8:[3.54,5.12,9.78],9:[6.72]}
+CH={1:[4.1],2:[1.0,4.44],3:[2.36,5.64],4:[4.5],5:[6.1],6:[0.94,3.48,7.2,11.94],7:[6.0,10.4,13.6,17.8],8:[0.4,6.07,16.5],9:[3.54,5.12,9.78],10:[6.72]}
 for k,ts in CH.items():
     for t in ts: add(S[k]+t,pop(850),0.12)
-for k,t in [(2,5.62),(4,0.7),(4,3.05),(4,5.72),(6,14.2),(6,16.46),(7,13.4),(7,20.1),(8,13.4)]: add(S[k]+t,pop(1200),0.1)
+for k,t in [(2,5.62),(4,0.7),(4,3.05),(4,5.72),(6,14.2),(6,16.46),(7,0.1),(7,2.3),(7,7.85),(7,12.6),(7,16.75),(8,13.4),(8,20.1),(9,13.4)]: add(S[k]+t,pop(1200),0.1)
 add(S[4]+0.2,whoosh(1.2),0.12); add(S[4]+3.9,boom(),0.1); add(S[4]+3.0,pop(900),0.1)
-add(S[6]+14.2,shimmer(),0.08); add(S[7]+13.4,shimmer(),0.07)
-add(S[7]+314/30-0.1,whoosh(0.5),0.16); add(S[7]+314/30,shimmer(1.8),0.12); add(S[7]+579/30-0.1,whoosh(0.4),0.13)
-add(S[9]+4.0,boom(),0.14); add(S[9]+4.0,shimmer(),0.12); add(S[9]+4.7,whoosh(0.5),0.1)
-add(S[9]+9.3,whoosh(0.35),0.13); add(S[9]+10.35,click(),0.3); add(S[9]+10.37,pop(1300),0.15)
+add(S[6]+14.2,shimmer(),0.08); add(S[8]+13.4,shimmer(),0.07)
+for t in (7.8,12.55,16.7): add(S[7]+t-0.12,whoosh(0.4),0.13)
+add(S[7]+21.45,boom(),0.1)
+add(S[8]+314/30-0.1,whoosh(0.5),0.16); add(S[8]+314/30,shimmer(1.8),0.12); add(S[8]+579/30-0.1,whoosh(0.4),0.13)
+add(S[10]+4.0,boom(),0.14); add(S[10]+4.0,shimmer(),0.12); add(S[10]+4.7,whoosh(0.5),0.1)
+add(S[10]+9.3,whoosh(0.35),0.13); add(S[10]+10.35,click(),0.3); add(S[10]+10.37,pop(1300),0.15)
 for r0,r1 in runs[1:]:
     t_=s2o(r0/30)
     i=int(t_*SR); w_=whoosh(0.16); out[i:i+len(w_)]+=w_*0.05

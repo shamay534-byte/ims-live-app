@@ -1,12 +1,12 @@
 # Inside-the-cirrus mirrors shot: the lip-synced presenter from the rooftop take (c7_full)
 # composited over the moving crystal-cloud plate, graded to the red light.
 import numpy as np, subprocess, cv2
-W,H=1080,1920; F0,F1=[int(v) for v in open("splice7.txt").read().split()]
-P=np.load("m7_person_full.npy",mmap_mode="r")
+W,H=1080,1920; F0,F1=[int(v) for v in open("splice8.txt").read().split()]
+P=np.load("m8_person_full.npy",mmap_mode="r")
 def reader(path, ss=0.0):
     return subprocess.Popen(["ffmpeg","-v","error","-ss",f"{ss:.4f}","-i",path,"-vf","scale=1080:1920:flags=lanczos,fps=30","-f","rawvideo","-pix_fmt","rgb24","-"],stdout=subprocess.PIPE)
-src=reader("out/c7_full.mp4"); plate=reader("out/plate.mp4")
-enc=subprocess.Popen(["ffmpeg","-v","error","-y","-f","rawvideo","-pix_fmt","rgb24","-s","1080x1920","-r","30","-i","-","-c:v","libx264","-crf","12","-preset","medium","-pix_fmt","yuv420p","out/c7.mp4"],stdin=subprocess.PIPE)
+src=reader("out/c8_full.mp4"); plate=reader("out/plate.mp4")
+enc=subprocess.Popen(["ffmpeg","-v","error","-y","-f","rawvideo","-pix_fmt","rgb24","-s","1080x1920","-r","30","-i","-","-c:v","libx264","-crf","12","-preset","medium","-pix_fmt","yuv420p","out/c8.mp4"],stdin=subprocess.PIPE)
 N=W*H*3; last_plate=None
 for j in range(len(P)):
     b=src.stdout.read(N)
