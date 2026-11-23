@@ -51,7 +51,7 @@ def hero():
         ms = [text_mask(t, font("SuezOne.ttf", size), 0) for t in lines]
         if max(x.shape[1] for x in ms) <= 930: break
         size -= 4
-    gap = int(size * 0.08); pad = 90
+    gap = int(size * 0.08); pad = 230
     w = max(x.shape[1] for x in ms) + 2 * pad; h = sum(x.shape[0] for x in ms) + gap + 2 * pad
     m = np.zeros((h, w), np.float32); y = pad
     spans = []
