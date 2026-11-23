@@ -6,7 +6,7 @@ import importlib.util
 spec = importlib.util.spec_from_file_location("m", os.path.join(os.path.dirname(os.path.abspath(__file__)), "render12.py"))
 m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
 sys.argv = sys.argv_saved
-import gemtitle3 as G2
+import gemtitle4 as G2
 R = m.R; D = m.D; W, H, FPS = 1080, 1920, 30
 clamp, eoc = m.clamp, m.eoc
 def eio(x): x = clamp(x); return x * x * (3 - 2 * x)
