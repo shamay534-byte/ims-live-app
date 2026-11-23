@@ -139,10 +139,20 @@ def headtop(n):
         return 600
 def TY(base=330):
     return min(base, headtop(CUR["n"]) - 150)
+SAFE_W = 800          # visible-content width that survives Instagram's side crop on tall phones
+def fitw(spr, maxw=SAFE_W):
+    a = spr[..., 3] > 8
+    cols = np.where(a.any(0))[0]
+    if not len(cols): return spr
+    vis = cols[-1] - cols[0]
+    if vis <= maxw: return spr
+    k = maxw / vis
+    return cv2.resize(spr, (int(spr.shape[1] * k), int(spr.shape[0] * k)), interpolation=cv2.INTER_AREA)
 def _popin(F, spr, x, y, t, t0, t1, s0=0.4, back=2.2, rot=0.0, alpha=1.0, fin=0.28, fout=0.22, bob=3):
     w = R.window(t, t0, t1, fin, fout)
     if not w: return 0
     pin, a = w
+    spr = fitw(spr)
     F.blit(spr, x, y + math.sin(t * 3 + x) * bob, alpha=a * alpha, scale=s0 + (1 - s0) * eob(pin, back), rot=rot)
     return a
 def top(F, spr, t, t0, t1, y=330, **kw):
@@ -158,7 +168,7 @@ def draw_tops(F):
 def kw_sprite(text, pal_i):
     pal = (STAR, ICE, FIRE, NIGHT)[pal_i]
     t = bigt(text, 76, pal)
-    sc = min(1.0, 740 / t.shape[1])
+    sc = min(1.0, 600 / t.shape[1])
     if sc < 1: t = cv2.resize(t, (int(t.shape[1] * sc), int(t.shape[0] * sc)), interpolation=cv2.INTER_AREA)
     return t
 def kw(F, t, t0, t1, text, ic, side="L", pal=0, y=1215):
@@ -176,7 +186,7 @@ def kw(F, t, t0, t1, text, ic, side="L", pal=0, y=1215):
     if 0 < sw < 1: F.blit(R.glow(150, (255, 255, 255)), cx - tw / 2 + tw * sw, y, alpha=a * 0.5 * math.sin(math.pi * sw))
     if ic:
         ix = cx + tw / 2 + 30 if cx + tw / 2 + 110 < W else cx - tw / 2 - 30
-        ix = min(max(ix, 85), W - 85)
+        ix = min(max(ix, 200), W - 200)
         pi_ = clamp((t - t0 - 0.08) / 0.3)
         if pi_ > 0:
             F.blit(icon_shadowed(ic, 140)[0], ix, y - 70 + math.sin(t * 4) * 8, alpha=a * eoc(pi_), scale=0.3 + 0.7 * eob(pi_, 3.0), rot=math.sin(t * 3) * 10)
@@ -242,7 +252,7 @@ def graphics(F, t, end):
     # 7. colourful
     top(F, bigt("צבעוניים במיוחד", 86, STAR), t, T(94.6), T(97.4))
     top(F, bigt("כדור אש!", 130, FIRE), t, V(4.40), V(8.45), s0=0.2, back=2.8, y=300)
-    for word, pal, x, y, vt in (("צהוב", YEL, 240, 640, 5.94), ("ירוק", GRN, 500, 600, 6.42), ("אדום", RED, 700, 830, 7.68), ("כחול", BLUE, 830, 1060, 8.02)):
+    for word, pal, x, y, vt in (("צהוב", YEL, 330, 640, 5.94), ("ירוק", GRN, 560, 560, 6.42), ("אדום", RED, 700, 830, 7.68), ("כחול", BLUE, 760, 1060, 8.02)):
         _popin(F, bigt(word, 124, pal), x, y, t, V(vt), V(8.45), s0=0.2, back=3.0)
     # 8. rate
     t8 = T(111.4)
@@ -277,15 +287,15 @@ def graphics(F, t, end):
         t0, tap = 0.15, 0.85
         if u > t0:
             p = clamp((u - t0) / 0.4)
-            spr, (bx, by) = follow_card(u >= tap + 0.1)
+            spr, (bx, by) = follow_card(u >= tap + 0.1); bx, by = bx * 0.84, by * 0.84
             press = 1 - 0.06 * max(0, 1 - abs(u - tap - 0.05) / 0.12)
             cy = 1100 + (1 - eob(p, 1.7)) * 300
-            F.blit(spr, 540, cy, alpha=eoc(p), scale=press)
+            F.blit(spr, 540, cy, alpha=eoc(p), scale=press * 0.84)
             if tap - 0.6 < u < tap + 0.9:
                 hp = clamp((u - (tap - 0.6)) / 0.55)
                 hy = cy + by + 70 + (1 - eoc(hp)) * 200 + (8 if abs(u - tap) < 0.1 else 0)
                 ha = clamp((u - (tap - 0.6)) / 0.15) * (1 - clamp((u - tap - 0.6) / 0.3))
-                F.blit(icon_shadowed("backhand_index_pointing_up_3d_default.png", 120, 8, 8, 0.4)[0], 540 + bx + 30, hy, alpha=ha)
+                F.blit(icon_shadowed("backhand_index_pointing_up_3d_default.png", 120, 8, 8, 0.4)[0], 540 + bx + 25, hy, alpha=ha)
 
 # ------------------------------------------------------------------ subtitles
 FIX = {"אתר": "מטר", "שלווה": "של אבק", "פייטון": "פייתון", "הג'מילידים": "הג'מינידים"}
@@ -334,7 +344,7 @@ def subtitles(F, t):
             p = clamp((t - t0) / 0.1)
             sprs = [R.sub_word(w["t"], w["s"] <= t < (ws[j + 1]["s"] if j + 1 < len(ws) else w["e"] + 0.2)) for j, w in enumerate(ws)]
             gap = -30; total = sum(s.shape[1] for s in sprs) + gap * (len(sprs) - 1)
-            sc = min(1.0, 860 / total) * (0.88 + 0.12 * eob(p, 2.8))
+            sc = min(1.0, 800 / total) * (0.88 + 0.12 * eob(p, 2.8))
             x = 540 + total * sc / 2
             for s in sprs:
                 ww = s.shape[1] * sc; F.blit(s, x - ww / 2, 1390, alpha=eoc(p), scale=sc); x -= ww + gap * sc

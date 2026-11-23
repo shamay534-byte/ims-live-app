@@ -49,7 +49,7 @@ def hero():
     size = 150
     while True:
         ms = [text_mask(t, font("SuezOne.ttf", size), 0) for t in lines]
-        if max(x.shape[1] for x in ms) <= 930: break
+        if max(x.shape[1] for x in ms) <= 790: break
         size -= 4
     gap = int(size * 0.08); pad = 230
     w = max(x.shape[1] for x in ms) + 2 * pad; h = sum(x.shape[0] for x in ms) + gap + 2 * pad
@@ -256,7 +256,7 @@ def draw(F, t, t_end, pulse=None, t0=0.15):
     # glowing meteor swoosh underlining the title, drawn right to left
     sa = clamp((u - 0.4) / 0.55)
     if sa > 0:
-        L = 760; xs = np.linspace(0, 1, 400)
+        L = 640; xs = np.linspace(0, 1, 400)
         lay = np.zeros((90, L + 80, 3), np.float32)
         head = eio(sa)
         pts = [(int(40 + L * (1 - x)), int(45 + 18 * math.sin(math.pi * x) * -1)) for x in xs if x <= head]
