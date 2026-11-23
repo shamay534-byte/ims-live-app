@@ -54,12 +54,23 @@ def hero():
     gap = int(size * 0.08); pad = 90
     w = max(x.shape[1] for x in ms) + 2 * pad; h = sum(x.shape[0] for x in ms) + gap + 2 * pad
     m = np.zeros((h, w), np.float32); y = pad
+    spans = []
     for x in ms:
-        x0 = (w - x.shape[1]) // 2; m[y:y + x.shape[0], x0:x0 + x.shape[1]] = np.maximum(m[y:y + x.shape[0], x0:x0 + x.shape[1]], x); y += x.shape[0] + gap
+        x0 = (w - x.shape[1]) // 2; m[y:y + x.shape[0], x0:x0 + x.shape[1]] = np.maximum(m[y:y + x.shape[0], x0:x0 + x.shape[1]], x)
+        spans.append((y, y + x.shape[0])); y += x.shape[0] + gap
     h, w = m.shape
     # luminous face: white-gold core fading to rose and violet toward the bottom, with soft inner light
     P = PAL[PALNAME]
-    g = vgrad(h, w, P['face'])
+    # every line gets the same colours: the top-half of the palette, applied per line
+    stops = [(p * 2, c) for p, c in P['face'] if p <= 0.5]
+    if stops[-1][0] < 1: stops.append((1.0, tuple(np.array([np.interp(0.5, [q for q, _ in P['face']], [c[i] for _, c in P['face']]) for i in range(3)]))))
+    g = np.zeros((h, w, 3), np.float32)
+    bounds = [0] + [ (spans[i][1] + spans[i + 1][0]) // 2 for i in range(len(spans) - 1)] + [h]
+    for i, (a0, a1) in enumerate(spans):
+        lo, hi = bounds[i], bounds[i + 1]
+        gl = vgrad(a1 - a0, w, stops)
+        g[a0:a1] = gl
+        g[lo:a0] = gl[0]; g[a1:hi] = gl[-1]
     inner = cv2.GaussianBlur(m, (0, 0), 6)
     face = g * (0.78 + 0.22 * inner[..., None])
     edge = np.clip(cv2.dilate(m, np.ones((5, 5), np.uint8)) - cv2.erode(m, np.ones((3, 3), np.uint8)), 0, 1)
