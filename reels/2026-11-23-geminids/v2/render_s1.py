@@ -24,24 +24,12 @@ HD = np.load(os.path.join(D, "out", "m1hd_head.npy"), mmap_mode="r")
 # ------------------------------------------------------------------ camera
 IMPACT = 0.30
 def cam(t):
-    """zoom, centre x, centre y (in plate pixels) and roll"""
-    face = (540, 760)
-    if t < IMPACT + 0.45:                                  # start deep in the sky, whip out on the meteor impact
-        p = eoc((t) / (IMPACT + 0.45))
-        z = 1.6 - 0.6 * p; cx = 600; cy = 330 + (960 - 330) * p; rot = -2.0 * (1 - p)
-        return z, cx, cy, rot
-    z = 1.0 + 0.05 * clamp((t - 0.75) / 3.5); cx, cy, rot = 540, 960, 0.0
-    # punch-in on "בדצמבר"
-    tp = T(17.1)
-    if tp - 0.05 <= t < T(17.95):
-        a = eoc((t - tp + 0.05) / 0.14) * (1 - eio((t - (T(17.95) - 0.25)) / 0.25))
-        z += 0.17 * a; cy += (face[1] - cy) * a
-    # slow dramatic push to his face on "תכירו את הג'מינידים"
+    """one slow, smooth cinematic push-in; a little extra drift toward his face on the name reveal"""
     tk = T(17.98)
+    z = 1.0 + 0.055 * eio(t / tk)
     if t >= tk:
-        a = eio((t - tk) / 1.3)
-        z = 1.05 + 0.20 * a; cx = 540; cy = 960 + (face[1] - 960) * a; rot = 1.2 * a
-    return z, cx, cy, rot
+        z += 0.05 * eio((t - tk) / 1.6)
+    return z, 540, 760 + 200 / z, 0.0      # zoom anchored on his face (face stays put, frame closes in)
 
 def warp_mat(z, cx, cy, rot):
     M = cv2.getRotationMatrix2D((cx, cy), rot, z)
@@ -135,7 +123,7 @@ def render(j, src):
     plate = draw_meteors(fr, pm0, t)
     z, cx, cy, rot = cam(t)
     # motion blur during the opening whip
-    if t < IMPACT + 0.45:
+    if False:
         acc = np.zeros_like(plate)
         for dt in (-0.012, -0.006, 0.0):
             acc += cv2.warpAffine(plate, warp_mat(*cam(max(0, t + dt))), (W, H), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT)
