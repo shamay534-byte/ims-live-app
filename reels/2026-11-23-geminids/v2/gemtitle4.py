@@ -11,8 +11,8 @@ def eoc(x): x = clamp(x); return 1 - (1 - x) ** 3
 def eio(x): x = clamp(x); return x * x * (3 - 2 * x)
 def eob(x, s=1.7): x = clamp(x); return 1 + (s + 1) * (x - 1) ** 3 + s * (x - 1) ** 2
 
-TX, TY = 540, 335        # hero block centre (two lines, inside IG safe zone)
-KY, DY = 0, 512          # (no kicker) / sub-line
+TX, TY = 540, 362        # hero block centre (two lines, inside IG safe zone)
+KY, DY = 0, 528          # (no kicker) / sub-line
 
 @functools.lru_cache(None)
 def font(name, size, wght=None):
@@ -49,7 +49,7 @@ def hero():
     size = 150
     while True:
         ms = [text_mask(t, font("SuezOne.ttf", size), 0) for t in lines]
-        if max(x.shape[1] for x in ms) <= 790: break
+        if max(x.shape[1] for x in ms) <= 700: break
         size -= 4
     gap = int(size * 0.08); pad = 230
     w = max(x.shape[1] for x in ms) + 2 * pad; h = sum(x.shape[0] for x in ms) + gap + 2 * pad
@@ -256,7 +256,7 @@ def draw(F, t, t_end, pulse=None, t0=0.15):
     # glowing meteor swoosh underlining the title, drawn right to left
     sa = clamp((u - 0.4) / 0.55)
     if sa > 0:
-        L = 640; xs = np.linspace(0, 1, 400)
+        L = 580; xs = np.linspace(0, 1, 400)
         lay = np.zeros((90, L + 80, 3), np.float32)
         head = eio(sa)
         pts = [(int(40 + L * (1 - x)), int(45 + 18 * math.sin(math.pi * x) * -1)) for x in xs if x <= head]
@@ -264,8 +264,8 @@ def draw(F, t, t_end, pulse=None, t0=0.15):
             f_ = i / max(1, len(pts))
             cv2.line(lay, pts[i - 1], pts[i], (255 * (0.5 + 0.5 * f_), 215 * (0.5 + 0.5 * f_), 160), 2 + int(3 * f_), cv2.LINE_AA)
         lay = lay + cv2.GaussianBlur(lay, (0, 0), 6) * 1.2
-        add(F, lay, TX, TY + 140, 0.85 * va)
-        if sa < 1 and pts: add(F, star4(80), TX - (L + 80) / 2 + pts[-1][0], TY + 140 - 45 + pts[-1][1], 1.4)
+        add(F, lay, TX, TY + 122, 0.85 * va)
+        if sa < 1 and pts: add(F, star4(80), TX - (L + 80) / 2 + pts[-1][0], TY + 122 - 45 + pts[-1][1], 1.4)
     # date
     da = clamp((u - 0.5) / 0.7)
     if da > 0:

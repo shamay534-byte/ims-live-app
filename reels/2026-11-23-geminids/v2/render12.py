@@ -139,7 +139,7 @@ def headtop(n):
         return 600
 def TY(base=330):
     return min(base, headtop(CUR["n"]) - 150)
-SAFE_W = 800          # visible-content width that survives Instagram's side crop on tall phones
+SAFE_W = 740          # visible-content width that survives Instagram's side crop on tall phones
 def fitw(spr, maxw=SAFE_W):
     a = spr[..., 3] > 8
     cols = np.where(a.any(0))[0]
@@ -344,7 +344,7 @@ def subtitles(F, t):
             p = clamp((t - t0) / 0.1)
             sprs = [R.sub_word(w["t"], w["s"] <= t < (ws[j + 1]["s"] if j + 1 < len(ws) else w["e"] + 0.2)) for j, w in enumerate(ws)]
             gap = -30; total = sum(s.shape[1] for s in sprs) + gap * (len(sprs) - 1)
-            sc = min(1.0, 800 / total) * (0.88 + 0.12 * eob(p, 2.8))
+            sc = min(1.0, 720 / total) * (0.88 + 0.12 * eob(p, 2.8))
             x = 540 + total * sc / 2
             for s in sprs:
                 ww = s.shape[1] * sc; F.blit(s, x - ww / 2, 1390, alpha=eoc(p), scale=sc); x -= ww + gap * sc

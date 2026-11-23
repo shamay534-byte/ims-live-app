@@ -144,7 +144,7 @@ def subtitles2(F, t):
                 if state == 1: pop = 1.0 + 0.10 * m.eob(clamp((t - w["s"]) / 0.14), 2.4)
                 items.append((spr, bl, pop))
             gap = -38; total = sum(s.shape[1] for s, _, _ in items) + gap * (len(items) - 1)
-            sc = min(hook, 800 / total) * (0.9 + 0.1 * m.eob(p, 2.8))
+            sc = min(hook, 720 / total) * (0.9 + 0.1 * m.eob(p, 2.8))
             x = 540 + total * sc / 2
             for spr, bl, pop in items:
                 ww = spr.shape[1] * sc; s2 = sc * pop
