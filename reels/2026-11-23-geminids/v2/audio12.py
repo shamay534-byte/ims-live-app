@@ -10,7 +10,7 @@ def load(path, extra=()):
     return np.frombuffer(r.stdout, np.int16).astype(np.float32) / 32768
 src = load("r11/../r10/dl/src.mov")
 # voice note: match the camera mic (cut lows, gentle presence, light room) and loudness
-vo = load("r11/vo/fix.m4a", ("-af", "highpass=f=110,lowpass=f=9500,equalizer=f=3000:t=q:w=1.2:g=-2,aecho=0.6:0.35:28:0.12"))
+vo = np.load("r11/vo/vo_matched.npy")   # spectrum-matched to the camera mic, denoised, with the camera room tone
 def rms(x): return np.sqrt(np.mean(x[np.abs(x) > 0.01] ** 2))
 ref = src[int(94.5 * SR):int(97.4 * SR)]
 vo *= rms(ref) / rms(vo[int(3.9 * SR):int(8.7 * SR)])
