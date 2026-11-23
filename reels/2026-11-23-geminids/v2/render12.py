@@ -279,7 +279,7 @@ def graphics(F, t, end):
             p = clamp((u - t0) / 0.4)
             spr, (bx, by) = follow_card(u >= tap + 0.1)
             press = 1 - 0.06 * max(0, 1 - abs(u - tap - 0.05) / 0.12)
-            cy = 1290 + (1 - eob(p, 1.7)) * 300
+            cy = 1100 + (1 - eob(p, 1.7)) * 300
             F.blit(spr, 540, cy, alpha=eoc(p), scale=press)
             if tap - 0.6 < u < tap + 0.9:
                 hp = clamp((u - (tap - 0.6)) / 0.55)
