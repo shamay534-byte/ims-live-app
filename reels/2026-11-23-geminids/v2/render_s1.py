@@ -6,7 +6,7 @@ import importlib.util
 spec = importlib.util.spec_from_file_location("m", os.path.join(os.path.dirname(os.path.abspath(__file__)), "render12.py"))
 m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
 sys.argv = sys.argv_saved
-import gemtitle2 as G2
+import gemtitle3 as G2
 R = m.R; D = m.D; W, H, FPS = 1080, 1920, 30
 clamp, eoc = m.clamp, m.eoc
 def eio(x): x = clamp(x); return x * x * (3 - 2 * x)
@@ -73,7 +73,6 @@ while tt < 9:
     col = [(140, 255, 170), (150, 190, 255), (255, 230, 170), (255, 255, 255), (255, 160, 120)][_r.choice(5, p=[0.22, 0.2, 0.28, 0.2, 0.1])]
     br = _r.uniform(0.55, 1.1) * (1.6 if _r.uniform() < 0.12 else 1.0)
     METEORS.append((tt, x0, y0, ang, L, dur, spd, col, br))
-METEORS.insert(0, (0.0, 1100.0, 120.0, math.radians(148), 900, IMPACT + 0.05, 2400.0, (255, 230, 180), 1.8))   # the hero meteor that "hits" the title
 
 def draw_meteors(plate, pm, t):
     layer = np.zeros_like(plate)
@@ -95,6 +94,64 @@ def draw_meteors(plate, pm, t):
     sky = np.clip((1150 - np.arange(H, dtype=np.float32)) / 120, 0, 1)[:, None, None]
     plate += layer * sky * (1 - pm[..., None])
     return plate
+
+# ------------------------------------------------------------------ styled subtitles (same font, one baseline, no boxes)
+from PIL import Image, ImageDraw, ImageFont, ImageFilter
+SUBY = 1390
+@functools.lru_cache(None)
+def sub_word2(text, state):
+    """state 0 upcoming, 1 active, 2 spoken. Returns sprite and baseline offset from the sprite top."""
+    f = R.font(76, 800); pad = 34; st = 6
+    asc, desc = f.getmetrics()
+    d0 = ImageDraw.Draw(Image.new("L", (1, 1)))
+    bb = d0.textbbox((0, 0), text, font=f, direction="rtl", language="he", stroke_width=st)
+    w = bb[2] - bb[0] + 2 * pad; h = asc + desc + 2 * st + 2 * pad
+    org = (pad - bb[0], pad + st)
+    def mask(sw):
+        mm = Image.new("L", (w, h), 0)
+        ImageDraw.Draw(mm).text(org, text, font=f, fill=255, direction="rtl", language="he", stroke_width=sw, stroke_fill=255)
+        return np.asarray(mm, np.float32) / 255
+    body = mask(0); stroke = mask(st)
+    out = np.zeros((h, w, 4), np.float32)
+    # soft drop shadow
+    shd = np.roll(cv2.GaussianBlur(stroke, (0, 0), 7), 6, 0)
+    out[..., 3] = shd * 200
+    if state == 1:   # warm glow behind the active word
+        gl = cv2.GaussianBlur(stroke, (0, 0), 14)
+        a = (gl * 0.85)[..., None]
+        out[..., :3] = out[..., :3] * (1 - a) + np.array((255, 170, 40), np.float32) * a; out[..., 3:] = np.maximum(out[..., 3:], gl[..., None] * 230)
+    sc = np.array((40, 22, 8) if state == 1 else (12, 14, 30), np.float32)
+    a = stroke[..., None]; out[..., :3] = out[..., :3] * (1 - a) + sc * a; out[..., 3:] = np.maximum(out[..., 3:], stroke[..., None] * 255)
+    ys = np.linspace(0, 1, h)[:, None, None]
+    if state == 1: fill = np.array((255, 246, 170), np.float32) * (1 - ys) + np.array((255, 176, 30), np.float32) * ys
+    else: fill = np.array((255, 255, 255), np.float32) * (1 - ys) + np.array((226, 228, 255), np.float32) * ys
+    fill = fill * np.ones((1, w, 1), np.float32)
+    a = body[..., None]; out[..., :3] = out[..., :3] * (1 - a) + fill * a
+    if state == 0: out[..., 3] *= 0.62
+    return out, org[1] + asc
+
+def subtitles2(F, t):
+    for (t0, t1, ws) in m.CHUNKS:
+        if t0 <= t < t1:
+            p = clamp((t - t0) / 0.12)
+            items = []
+            for j, w in enumerate(ws):
+                end = ws[j + 1]["s"] if j + 1 < len(ws) else w["e"] + 0.2
+                state = 1 if w["s"] <= t < end else (2 if t >= end else 0)
+                spr, bl = sub_word2(w["t"], state)
+                pop = 1.0
+                if state == 1: pop = 1.0 + 0.10 * m.eob(clamp((t - w["s"]) / 0.14), 2.4)
+                items.append((spr, bl, pop))
+            gap = -38; total = sum(s.shape[1] for s, _, _ in items) + gap * (len(items) - 1)
+            sc = min(1.0, 880 / total) * (0.9 + 0.1 * m.eob(p, 2.8))
+            x = 540 + total * sc / 2
+            for spr, bl, pop in items:
+                ww = spr.shape[1] * sc; s2 = sc * pop
+                # keep every word on the same baseline even while the active word pops
+                cy = SUBY + (spr.shape[0] / 2 - bl) * s2 + (bl - spr.shape[0] / 2) * sc
+                F.blit(spr, x - ww / 2, cy, alpha=eoc(p), scale=s2)
+                x -= ww + gap * sc
+            return
 
 # ------------------------------------------------------------------ frame
 class Src:
@@ -140,11 +197,9 @@ def render(j, src):
     img *= m.vign()
     F = R.Frame(img, pm, hm)
     m.TOPQ.clear()
-    G2.draw(F, t, TEND - 0.3, pulse=T(18.46), t0=IMPACT - 0.05)
-    if IMPACT <= t < IMPACT + 0.35:                       # impact flash
-        F.img += (255 - F.img) * (1 - (t - IMPACT) / 0.35) ** 2 * 0.45
+    G2.draw(F, t, TEND - 0.3, pulse=T(18.46), t0=0.0)
     m.kw(F, t, T(16.6), T(17.95), "בדצמבר!", "calendar_3d.png", "R", 0)
-    if 0.1 < t < TEND - 0.05: m.subtitles(F, t)
+    if 0.1 < t < TEND - 0.05: subtitles2(F, t)
     np.clip(F.img, 0, 255, out=F.img)
     return F.img.astype(np.uint8), F.head_overlap
 
