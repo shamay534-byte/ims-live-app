@@ -137,8 +137,19 @@ def headtop(n):
         return int(min(t[0] for t in tops if len(t)) * 3)
     except Exception:
         return 600
+TOPMIN = 330        # nothing above this: Instagram's top bar ("Preview"/back/camera) covers it on phones
 def TY(base=330):
-    return min(base, headtop(CUR["n"]) - 150)
+    return max(TOPMIN, min(base, headtop(CUR["n"]) - 150))
+def fith(spr, y):
+    """shrink a top sprite so its visible part stays clear of his head"""
+    room = 2 * (headtop(CUR["n"]) - 30 - y)
+    a = spr[..., 3] > 30
+    rows = np.where(a.any(1))[0]
+    if not len(rows) or room <= 0: return spr
+    vis = rows[-1] - rows[0]
+    if vis <= room: return spr
+    k = max(0.45, room / vis)
+    return cv2.resize(spr, (int(spr.shape[1] * k), int(spr.shape[0] * k)), interpolation=cv2.INTER_AREA)
 SAFE_W = 740          # visible-content width that survives Instagram's side crop on tall phones
 def fitw(spr, maxw=SAFE_W):
     a = spr[..., 3] > 8
@@ -156,7 +167,8 @@ def _popin(F, spr, x, y, t, t0, t1, s0=0.4, back=2.2, rot=0.0, alpha=1.0, fin=0.
     F.blit(spr, x, y + math.sin(t * 3 + x) * bob, alpha=a * alpha, scale=s0 + (1 - s0) * eob(pin, back), rot=rot)
     return a
 def top(F, spr, t, t0, t1, y=330, **kw):
-    TOPQ.append((F, spr, 540, TY(y), t, t0, t1, kw))
+    yy = TY(y)
+    TOPQ.append((F, fith(fitw(spr), yy), 540, yy, t, t0, t1, kw))
 def draw_tops(F):
     act = [q for q in TOPQ if R.window(q[4], q[5], q[6], 0.28, 0.22)]
     if not act: return
@@ -226,7 +238,7 @@ def graphics(F, t, end):
     G.draw(F, t, PEND(0) - 0.36, pulse=T(18.46), impact=0.30)
     kw(F, t, T(16.6), T(17.95), "בדצמבר!", "calendar_3d.png", "R", 0)
     # 2. Earth crosses the trail
-    _popin(F, ltr("13-14.12", 150, (255, 248, 220), (255, 170, 60)), 540, TY(), t, T(22.3), T(24.2), s0=0.3, back=2.6)
+    top(F, ltr("13-14.12", 150, (255, 248, 220), (255, 170, 60)), t, T(22.3), T(24.0), s0=0.3, back=2.6)
     top(F, bigt("כדור הארץ חוצה שובל", 72, ICE), t, T(24.3), T(29.0))
     kw(F, t, T(25.5), T(29.0), "שובל של אבק ושברי סלע", "sparkles_3d.png", "R", 1)
     # 3. sand grains -> shooting stars
