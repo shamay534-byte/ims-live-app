@@ -11,7 +11,7 @@ clamp, eoc, eob = R.clamp, R.ease_out_cubic, R.ease_out_back
 icon_shadowed, to_np = R.icon_shadowed, R.to_np
 D = os.path.join(HERE, "r11")
 W, H, FPS = 1080, 1920, 30
-SP = 1.06          # global speed-up, applied by frame selection (no extra re-encode)
+SP = 1.0           # no speed-up (natural motion); pace comes from pause trimming
 END_HOLD = 1.7
 
 # ------------------------------------------------------------------ edit decision list
@@ -42,25 +42,29 @@ def _wav(path):
 SRC, SR = _wav(os.path.join(D, "src16.wav"))
 VO, VSR = _wav(os.path.join(D, "vo", "fix16.wav"))
 
-def runs_of(kind, a, b, min_gap=0.30, pad=0.12, th=420):
-    """keep [a,b] but drop silences longer than min_gap (leaving pad on both sides)"""
+def runs_of(kind, a, b, min_gap=0.27, pad=0.05, th=1300):
+    """keep [a,b]; silences >= min_gap shrink to pad on each side (removes >= 0.17 s), edges trimmed too"""
     x, sr = (SRC, SR) if kind == "c" else (VO, VSR)
     hop = int(0.01 * sr); i0, i1 = int(a * sr), int(b * sr)
     e = np.array([np.sqrt(np.mean(x[i:i + hop] ** 2)) for i in range(i0, i1, hop)])
     quiet = e < th
-    out = []; cur = a; k = 0; n = len(e)
-    while k < n:
+    n = len(e); k0 = 0; k1 = n
+    while k0 < n and quiet[k0]: k0 += 1
+    while k1 > k0 and quiet[k1 - 1]: k1 -= 1
+    s0 = a + max(0, k0 * 0.01 - pad); s1 = min(b, a + k1 * 0.01 + pad)
+    out = []; cur = s0; k = k0
+    while k < k1:
         if quiet[k]:
             j = k
-            while j < n and quiet[j]: j += 1
+            while j < k1 and quiet[j]: j += 1
             t0, t1 = a + k * 0.01, a + j * 0.01
-            if (t1 - t0) >= min_gap and k > 0 and j < n:
+            if (t1 - t0) >= min_gap:
                 out.append((cur, t0 + pad)); cur = t1 - pad
             k = j
         else:
             k += 1
-    out.append((cur, b))
-    return [(s, e_) for s, e_ in out if e_ - s > 0.02]
+    out.append((cur, s1))
+    return [(p, q) for p, q in out if q - p > 0.02]
 
 RUNS = []   # (piece_idx, src_a, src_b, tl_a)
 _tl = 0.0
@@ -333,7 +337,7 @@ def subtitles(F, t):
             sc = min(1.0, 860 / total) * (0.88 + 0.12 * eob(p, 2.8))
             x = 540 + total * sc / 2
             for s in sprs:
-                ww = s.shape[1] * sc; F.blit(s, x - ww / 2, 1480, alpha=eoc(p), scale=sc); x -= ww + gap * sc
+                ww = s.shape[1] * sc; F.blit(s, x - ww / 2, 1390, alpha=eoc(p), scale=sc); x -= ww + gap * sc
             return
 
 # ------------------------------------------------------------------ frames

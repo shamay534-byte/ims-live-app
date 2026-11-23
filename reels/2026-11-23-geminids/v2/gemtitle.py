@@ -31,7 +31,7 @@ def _vgrad(h, w, stops):
     return np.repeat(out[:, None, :], w, 1)
 
 @functools.lru_cache(None)
-def hero(text="הג׳מינידים", size=200, depth=22):
+def hero(text="הג׳מינידים", size=168, depth=19):
     """metallic extruded title; returns (rgba float32, alpha mask of face for sweeps)"""
     f = rubik(size, 900)
     pad = 70
@@ -129,10 +129,10 @@ def add_blit(F, spr, cx, cy, alpha=1.0, scale=1.0):
     s = spr[Y0 - y0:Y1 - y0, X0 - x0:X1 - x0]
     F.img[Y0:Y1, X0:X1] += s[..., :3] * (s[..., 3:4] / 255 * alpha)
 
-TX, TY = 540, 300          # hero centre
+TX, TY = 540, 385          # hero centre
 _rng = random.Random(7)
 SPARKS = [(_rng.uniform(0, 2 * math.pi), _rng.uniform(250, 900), _rng.uniform(0.5, 1.1), _rng.choice([(255, 230, 160), (255, 160, 70), (180, 220, 255), (255, 255, 255)])) for _ in range(46)]
-TWINK = [(_rng.uniform(150, 930), _rng.uniform(150, 560), _rng.uniform(0, 6.28), _rng.uniform(18, 46)) for _ in range(12)]
+TWINK = [(_rng.uniform(150, 930), _rng.uniform(230, 560), _rng.uniform(0, 6.28), _rng.uniform(18, 46)) for _ in range(12)]
 
 def burst(F, dt, strength=1.0):
     if not (0 <= dt < 1.2): return
@@ -189,19 +189,19 @@ def draw(F, u, t_end, pulse=None, impact=0.42):
     ka = clamp((dt - 0.35) / 0.35)
     if ka > 0:
         k = line_text("מטר המטאורים הצבעוני של השנה", 50, 600, (255, 255, 255), (255, 226, 170), (255, 150, 60))
-        F.blit(k, TX, 150 - 18 * (1 - eoc(ka)), alpha=va * eoc(ka))
+        F.blit(k, TX, 262 - 18 * (1 - eoc(ka)), alpha=va * eoc(ka))
         kw_ = k.shape[1] - 80
         lw = int(110 * eoc(ka))
         if lw > 2:
             ln = np.zeros((4, lw, 4), np.float32); ln[..., :3] = (255, 210, 140); ln[..., 3] = np.linspace(0, 255, lw)[None, :]
-            F.blit(ln, TX + kw_ / 2 + 20 + lw / 2, 154, alpha=va)
-            F.blit(ln[:, ::-1].copy(), TX - kw_ / 2 - 20 - lw / 2, 154, alpha=va)
-            add_blit(F, star4(44), TX + kw_ / 2 + 22 + lw, 154, alpha=va)
-            add_blit(F, star4(44), TX - kw_ / 2 - 22 - lw, 154, alpha=va)
+            F.blit(ln, TX + kw_ / 2 + 20 + lw / 2, 266, alpha=va)
+            F.blit(ln[:, ::-1].copy(), TX - kw_ / 2 - 20 - lw / 2, 266, alpha=va)
+            add_blit(F, star4(44), TX + kw_ / 2 + 22 + lw, 266, alpha=va)
+            add_blit(F, star4(44), TX - kw_ / 2 - 22 - lw, 266, alpha=va)
     da = clamp((dt - 0.6) / 0.35)
     if da > 0:
         d = line_text("13-14 בדצמבר", 66, 800, (225, 245, 255), (120, 190, 255), (60, 140, 255))
-        F.blit(d, TX, 452 + 20 * (1 - eoc(da)), alpha=va * eoc(da), scale=0.8 + 0.2 * eob(da, 2.4))
+        F.blit(d, TX, 510 + 20 * (1 - eoc(da)), alpha=va * eoc(da), scale=0.8 + 0.2 * eob(da, 2.4))
     # 6) twinkles around
     for (x, y, ph, s) in TWINK:
         tw = 0.5 + 0.5 * math.sin(u * 3.1 + ph)
