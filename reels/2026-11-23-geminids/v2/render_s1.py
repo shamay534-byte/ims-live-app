@@ -131,9 +131,10 @@ def sub_word2(text, state):
     return out, org[1] + asc
 
 def subtitles2(F, t):
-    for (t0, t1, ws) in m.CHUNKS:
+    for ci, (t0, t1, ws) in enumerate(m.CHUNKS):
         if t0 <= t < t1:
             p = clamp((t - t0) / 0.12)
+            hook = 1.45 if ci == 0 else 1.0      # the opening hook line is bigger
             items = []
             for j, w in enumerate(ws):
                 end = ws[j + 1]["s"] if j + 1 < len(ws) else w["e"] + 0.2
@@ -143,7 +144,7 @@ def subtitles2(F, t):
                 if state == 1: pop = 1.0 + 0.10 * m.eob(clamp((t - w["s"]) / 0.14), 2.4)
                 items.append((spr, bl, pop))
             gap = -38; total = sum(s.shape[1] for s, _, _ in items) + gap * (len(items) - 1)
-            sc = min(1.0, 880 / total) * (0.9 + 0.1 * m.eob(p, 2.8))
+            sc = min(hook, 960 / total) * (0.9 + 0.1 * m.eob(p, 2.8))
             x = 540 + total * sc / 2
             for spr, bl, pop in items:
                 ww = spr.shape[1] * sc; s2 = sc * pop
