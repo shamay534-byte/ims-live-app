@@ -33,6 +33,14 @@ def vgrad(h, w, stops):
     for c in range(3): out[:, c] = np.interp(ys, [s[0] for s in stops], [s[1][c] for s in stops])
     return np.repeat(out[:, None, :], w, 1)
 
+PAL = {
+ "goldpink": dict(face=[(0, (255, 255, 245)), (0.38, (255, 236, 170)), (0.55, (255, 198, 140)), (0.72, (240, 150, 200)), (1, (170, 120, 255))], depth=(70, 40, 140), outline=(255, 214, 120), glow=[(255, 170, 90), (255, 225, 170), (150, 110, 255)]),
+ "gold": dict(face=[(0, (255, 253, 235)), (0.35, (255, 232, 160)), (0.5, (255, 246, 210)), (0.56, (238, 190, 90)), (1, (180, 120, 40))], depth=(70, 40, 10), outline=(255, 240, 190), glow=[(255, 170, 60), (255, 220, 150), (255, 140, 40)]),
+ "silver": dict(face=[(0, (255, 255, 255)), (0.45, (225, 238, 255)), (0.52, (255, 255, 255)), (0.6, (180, 205, 240)), (1, (130, 160, 220))], depth=(20, 35, 80), outline=(200, 230, 255), glow=[(110, 170, 255), (210, 235, 255), (80, 120, 255)]),
+ "cosmic": dict(face=[(0, (240, 255, 255)), (0.35, (150, 235, 255)), (0.65, (150, 160, 255)), (1, (210, 120, 255))], depth=(30, 15, 80), outline=(220, 245, 255), glow=[(80, 200, 255), (190, 230, 255), (190, 90, 255)]),
+ "white": dict(face=[(0, (255, 255, 255)), (1, (255, 246, 230))], depth=(40, 30, 60), outline=(255, 230, 170), glow=[(255, 200, 120), (255, 245, 220), (200, 170, 255)]),
+}
+PALNAME = "cosmic"
 @functools.lru_cache(None)
 def hero():
     """returns face rgba (premultiplied-ready), bloom rgb, face mask"""
@@ -50,7 +58,8 @@ def hero():
         x0 = (w - x.shape[1]) // 2; m[y:y + x.shape[0], x0:x0 + x.shape[1]] = np.maximum(m[y:y + x.shape[0], x0:x0 + x.shape[1]], x); y += x.shape[0] + gap
     h, w = m.shape
     # luminous face: white-gold core fading to rose and violet toward the bottom, with soft inner light
-    g = vgrad(h, w, [(0, (255, 255, 245)), (0.38, (255, 236, 170)), (0.55, (255, 198, 140)), (0.72, (240, 150, 200)), (1, (170, 120, 255))])
+    P = PAL[PALNAME]
+    g = vgrad(h, w, P['face'])
     inner = cv2.GaussianBlur(m, (0, 0), 6)
     face = g * (0.78 + 0.22 * inner[..., None])
     edge = np.clip(cv2.dilate(m, np.ones((5, 5), np.uint8)) - cv2.erode(m, np.ones((3, 3), np.uint8)), 0, 1)
@@ -60,19 +69,19 @@ def hero():
     depth = 9
     for k in range(depth, 0, -1):
         mk = np.roll(np.roll(m, k, 0), k // 2, 1)
-        c = np.array((70, 40, 140), np.float32) * (0.55 + 0.45 * (1 - k / depth))
+        c = np.array(P['depth'], np.float32) * (0.55 + 0.45 * (1 - k / depth))
         a = mk[..., None]; rgba[..., :3] = rgba[..., :3] * (1 - a) + c * a; rgba[..., 3:] = np.maximum(rgba[..., 3:], mk[..., None] * 255)
     # thin gold outline
     ol = np.clip(cv2.dilate(m, np.ones((7, 7), np.uint8)) - m, 0, 1)
     ol = cv2.GaussianBlur(ol, (0, 0), 0.7)
-    a = ol[..., None]; rgba[..., :3] = rgba[..., :3] * (1 - a) + np.array((255, 214, 120), np.float32) * a; rgba[..., 3:] = np.maximum(rgba[..., 3:], ol[..., None] * 255)
+    a = ol[..., None]; rgba[..., :3] = rgba[..., :3] * (1 - a) + np.array(P['outline'], np.float32) * a; rgba[..., 3:] = np.maximum(rgba[..., 3:], ol[..., None] * 255)
     a = m[..., None]; rgba[..., :3] = rgba[..., :3] * (1 - a) + face * a; rgba[..., 3:] = np.maximum(rgba[..., 3:], m[..., None] * 255)
     # dark soft shadow under letters for legibility
     sh = np.zeros((h, w, 4), np.float32); sh[..., 3] = np.roll(cv2.GaussianBlur(m, (0, 0), 9), 8, 0) * 150
     # bloom: wide warm glow + tight bright glow
-    b1 = cv2.GaussianBlur(m, (0, 0), 28)[..., None] * np.array((255, 170, 90), np.float32) * 0.9
-    b2 = cv2.GaussianBlur(m, (0, 0), 10)[..., None] * np.array((255, 225, 170), np.float32) * 0.8
-    b3 = cv2.GaussianBlur(m, (0, 0), 60)[..., None] * np.array((150, 110, 255), np.float32) * 0.7
+    b1 = cv2.GaussianBlur(m, (0, 0), 28)[..., None] * np.array(P['glow'][0], np.float32) * 0.9
+    b2 = cv2.GaussianBlur(m, (0, 0), 10)[..., None] * np.array(P['glow'][1], np.float32) * 0.8
+    b3 = cv2.GaussianBlur(m, (0, 0), 60)[..., None] * np.array(P['glow'][2], np.float32) * 0.7
     return rgba, sh, b1 + b2 + b3, m
 
 @functools.lru_cache(None)
