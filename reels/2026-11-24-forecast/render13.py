@@ -173,9 +173,9 @@ def rounded(w, h, r, fill, grad=None, border=None, shadow=0):
 
 # ---------------------------------------------------------------- content
 DAYS = [("השבוע", "24.11", "sun_3d.png", "sun"),
-        ("רביעי", "25.11", "sun_behind_rain_cloud_3d.png", "rain"),
-        ("ה׳–ו׳", "26-27.11", "sun_3d.png", "sun"),
-        ("ראשון", "29.11", "cloud_with_rain_3d.png", "rain"),
+        ("רביעי", "25.11", "local_rain_3d.png", "rain"),
+        ("ה׳–ו׳", "26-27.11", "sun_cirrus_3d.png", "sun"),
+        ("ראשון", "29.11", "local_rain_3d.png", "rain"),
         ("המשך השבוע", "30.11+", "cloud_with_lightning_and_rain_3d.png", "storm")]
 DAYCARD = [(9.02, 15.05, 0), (15.36, 20.55, 1), (20.86, 27.0, 2), (27.62, 33.75, 3), (34.42, 39.85, 4)]
 THEME = {"sun": ((255, 196, 40), (255, 112, 30)), "rain": ((64, 156, 255), (36, 90, 220)),
@@ -184,9 +184,9 @@ SCREEN_WINDOWS = []
 BEHIND = [  # t0, t1, icon, cx, cy, size   (left side; the day card lives on the right)
     (0.2, 8.95, "umbrella_with_rain_drops_3d.png", 165, 760, 220),
     (9.02, 15.0, "sun_3d.png", 165, 740, 220),
-    (15.36, 20.5, "sun_behind_rain_cloud_3d.png", 165, 760, 230),
-    (20.86, 26.95, "sun_behind_small_cloud_3d.png", 165, 760, 230),
-    (27.62, 33.7, "cloud_with_rain_3d.png", 165, 760, 230),
+    (15.36, 20.5, "local_rain_3d.png", 165, 760, 230),
+    (20.86, 26.95, "sun_cirrus_3d.png", 165, 760, 230),
+    (27.62, 33.7, "local_rain_3d.png", 165, 760, 230),
     (34.42, 39.8, "cloud_with_lightning_and_rain_3d.png", 165, 760, 240),
     (39.94, 99, "sun_behind_cloud_3d.png", 165, 760, 220),
 ]
@@ -196,7 +196,7 @@ CHIPS = [  # t0, t1, text, icon, side
     (6.62, 9.0, "חורף ברוב הארץ", "cloud_with_rain_3d.png", "L"),
     (10.42, 12.44, "עדיין חם", "thermometer_3d.png", "R"),
     (12.78, 15.0, "נעים, אפילו אביבי", "sun_with_face_3d.png", "L"),
-    (15.36, 19.4, "גשם מקומי קצר בצפון ובמרכז", "cloud_with_rain_3d.png", "R"),
+    (15.36, 19.4, "גשם מקומי קצר בצפון ובמרכז", "local_rain_3d.png", "R"),
     (19.44, 20.5, "ממש בקטנה", "pinching_hand_3d_default.png", "L"),
     (20.86, 22.7, "הטמפ׳ עולות", "chart_increasing_3d.png", "R"),
     (22.78, 26.96, "ענני נוצה ושקיעות יפות", "sunset_3d.png", "L"),

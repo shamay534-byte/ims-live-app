@@ -4,7 +4,7 @@ SR = 48000
 KEEP = [tuple(k) for k in json.load(open("r12/keep.json")) if k[1] - k[0] > 5]
 OUT = [f for a, b in KEEP for f in range(a, b)]
 w = wave.open("r12/a48.wav"); x = np.frombuffer(w.readframes(w.getnframes()), np.int16).astype(np.float32) / 32768
-f = int(0.006 * SR); parts = []
+f = int(0.012 * SR); parts = []
 for a, b in KEEP:
     seg = x[int(a / 30 * SR):int(b / 30 * SR)].copy(); seg[:f] *= np.linspace(0, 1, f); seg[-f:] *= np.linspace(1, 0, f); parts.append(seg)
 v = np.concatenate(parts); v = v / np.abs(v).max() * 0.89
