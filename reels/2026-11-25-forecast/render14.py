@@ -381,17 +381,15 @@ def day_card(i, active):
 def title_parts():
     # red alert pill with a lightning icon
     tl = text_layer("עדכון 25.11", 46, 800, fill=(255, 255, 255), pad=0)
-    ic = _ic("high_voltage_3d.png", 58)
-    w, h = tl.size[0] + 52 + 56, 74
+    w, h = tl.size[0] + 64, 74
     pill = rounded(w, h, 37, (255, 255, 255, 255), grad=((255, 70, 70), (200, 0, 30)), border=((255, 255, 255, 240), 3), shadow=10)
     pp = (pill.size[0] - w) // 2
-    pill.alpha_composite(tl, (pp + 26, pp + (h - tl.size[1]) // 2 - 4))
-    pill.alpha_composite(ic, (pp + w - 22 - 58, pp + (h - 58) // 2))
+    pill.alpha_composite(tl, (pp + 32, pp + (h - tl.size[1]) // 2 - 4))
     # huge gold headline, thick dark outline + 3D extrusion -> pops on any feed
-    l1 = text_layer("החורף מגיע!", 132, 800, gradient=((255, 247, 120), (255, 176, 0)),
+    l1 = text_layer("החורף מגיע!", 120, 800, gradient=((255, 247, 120), (255, 176, 0)),
                     stroke=7, stroke_fill=(20, 12, 40), extrude=12, extrude_fill=(120, 40, 0), shadow=16, pad=80)
     # red banner subline
-    t2 = text_layer("גשם חזק וברד ביום שלישי", 56, 800, fill=(255, 255, 255), pad=0, shadow=0)
+    t2 = text_layer("מהפך וגשם בשבוע הבא", 56, 800, fill=(255, 255, 255), pad=0, shadow=0)
     w2, h2 = t2.size[0] + 70, 84
     ban = rounded(w2, h2, 22, (255, 255, 255, 255), grad=((235, 30, 45), (150, 0, 25)), border=((255, 225, 90, 255), 4), shadow=12)
     bp = (ban.size[0] - w2) // 2
@@ -469,7 +467,7 @@ def follow_card(followed):
     ring = Image.alpha_composite(wr, ring); ring.alpha_composite(av, (10, 10))
     base.alpha_composite(ring, (pad + w - 152 - 24, pad + (h - 152) // 2))
     t1 = text_layer("עקבו אחריי", 48, 800, fill=(18, 24, 38), pad=0)
-    num = text_layer("62.8K", 50, 800, fill=(18, 24, 38), pad=0)
+    num = text_layer("63K", 50, 800, fill=(18, 24, 38), pad=0)
     lab = text_layer("עוקבים", 36, 600, fill=(110, 118, 132), pad=0)
     rx = pad + w - 152 - 48
     base.alpha_composite(t1, (rx - t1.size[0], pad + 30))
@@ -608,16 +606,16 @@ def render(i, raw):
     def elem(spr, t0, cy, big=1.0):
         p = clamp((tt - t0) / 0.42)
         if p <= 0: return
-        sc = (1 + (big - 1) * (1 - ease_out_cubic(p))) * (0.6 + 0.4 * ease_out_back(p, 2.2)) * (1 + 0.01 * math.sin(t * 2.4))
-        F.blit(spr, 540, round(cy + math.sin(t * 1.6) * 2), alpha=ease_out_cubic(clamp(p * 1.8)), scale=sc)
+        sc = 1.0 if p >= 1 else (1 + (big - 1) * (1 - ease_out_cubic(p))) * (0.6 + 0.4 * ease_out_back(p, 2.2))
+        F.blit(spr, 540, cy, alpha=ease_out_cubic(clamp(p * 1.8)), scale=sc)
     if 0.0 <= tt < 0.5:  # impact flash behind the headline
         F.blit(flat_glow(1000, (255, 236, 150)), 540, 400, alpha=0.85 * (1 - tt / 0.5))
-    elem(l1, 0.0, 396, big=1.7)
-    elem(l0, 0.22, 296)
-    elem(l2, 0.36, 490)
+    elem(l1, 0.0, 394, big=1.7)
+    elem(l0, 0.22, 290)
+    elem(l2, 0.36, 504)
     sw = ((tt - 1.0) % 5.0) / 0.9
     if tt > 1.0 and sw < 1:
-        F.blit(glow(190, (255, 255, 255)), 540 + 330 - 660 * sw, 396, alpha=0.5 * math.sin(math.pi * sw))
+        F.blit(glow(190, (255, 255, 255)), 540 + 330 - 660 * sw, 394, alpha=0.5 * math.sin(math.pi * sw))
 
     # --- day card (right side, beside the head) — changes with the day being discussed
     for (a0, a1, k) in DAYCARD:
