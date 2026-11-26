@@ -407,16 +407,17 @@ def l2_left():
     a = title_parts()[2]; xs = np.where(a[..., 3].max(0) > 40)[0]
     return 545 - a.shape[1] / 2 + xs.min()
 
+TITLE_W = 680
 @functools.lru_cache(None)
 def title_img():
     im = Image.open(A("title_26-11_umbrella.png")).convert("RGBA")
     a = np.asarray(im)[..., 3]; ys, xs = np.where(a > 24)
     im = im.crop((xs.min(), ys.min(), xs.max() + 1, ys.max() + 1))
-    w = 840; h = int(im.size[1] * w / im.size[0])
+    w = TITLE_W; h = int(im.size[1] * w / im.size[0])
     arr = to_np(im.resize((w, h), Image.LANCZOS))
     al = arr[..., 3]; arr[..., 3] = np.clip((al - 40) * 255 / 215, 0, 255)   # drop the faint haze around the edges
     ys = np.where(arr[..., 3].max(1) > 12)[0]; arr = arr[:ys.max() + 1]
-    return arr, 458 - arr.shape[0] / 2   # bottom edge at y=458 (above the head)
+    return arr, 462 - arr.shape[0] / 2   # bottom edge at y=462 (above the head)
 
 @functools.lru_cache(None)
 def kw_sprite(text, theme):
