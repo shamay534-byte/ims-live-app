@@ -29,10 +29,10 @@ def add(ts, s, g):
 T0 = KEEP[0][0] / 30
 add(T0, boom(), 0.2); add(T0 + 0.02, whoosh(0.5), 0.12)
 for ts in (15.5, 23.12, 32.44, 39.74, 49.04, 52.26, 60.2): add(ts - 0.05, whoosh(0.45), 0.14)
-for ts in (1.38, 5.0, 6.94, 10.28, 12.72, 16.7, 18.68, 24.7, 28.94, 34.86, 37.08, 41.02, 42.76, 44.8, 49.54, 52.26, 55.1, 58.08, 60.2, 62.44, 64.16, 66.34):
+for ts in (1.38, 5.0, 10.28, 12.72, 16.7, 18.68, 24.7, 28.94, 34.86, 37.08, 41.02, 42.76, 44.8, 49.54, 52.26, 55.1, 58.08, 60.2, 62.44, 64.16):
     add(ts + 0.02, pop(850), 0.1)
 
-add(68.6, click(), 0.3); add(68.62, pop(1300), 0.15)
+add(67.96, click(), 0.3); add(67.98, pop(1300), 0.15)
 out = np.clip(out, -1, 1)
 o = wave.open(f"{D}/sfx.wav", "wb"); o.setnchannels(1); o.setsampwidth(2); o.setframerate(SR); o.writeframes((out * 32767).astype(np.int16).tobytes()); o.close()
 print("voice", len(v) / SR, "frames", len(OUT) / 30)

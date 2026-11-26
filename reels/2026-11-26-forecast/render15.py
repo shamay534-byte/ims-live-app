@@ -179,7 +179,7 @@ DAYS = [("שישי", "27.11", "sun_cirrus_3d.png", "sun"),
         ("שני", "30.11", "sun_behind_small_cloud_3d.png", "sun"),
         ("שני–חמישי", "30.11-3.12", "cloud_with_rain_3d.png", "rain"),
         ("סופ״ש הבא", "4-5.12", "sun_behind_rain_cloud_3d.png", "cloud")]
-DAYCARD = [(15.5, 22.9, 0), (23.12, 32.3, 1), (32.44, 39.6, 2), (39.74, 48.9, 3), (49.04, 52.1, 4), (52.26, 60.1, 5), (60.2, 67.8, 6)]
+DAYCARD = [(15.5, 22.9, 0), (23.12, 32.3, 1), (32.44, 39.6, 2), (39.74, 48.9, 3), (49.04, 52.1, 4), (52.26, 60.1, 5), (60.2, 66.2, 6)]
 THEME = {"sun": ((255, 196, 40), (255, 112, 30)), "rain": ((64, 156, 255), (36, 90, 220)),
          "storm": ((90, 110, 255), (40, 50, 170)), "cloud": ((150, 170, 200), (90, 110, 150))}
 SCREEN_WINDOWS = []
@@ -187,13 +187,12 @@ TS = 0
 BEHIND = [  # t0, t1, icon, cx, cy, size   (left side, only where no day card is shown)
     (0.3, 10.1, "umbrella_with_rain_drops_3d.png", 175, 760, 230),
     (10.28, 15.4, "sun_3d.png", 175, 740, 220),
-    (67.9, 99, "sun_behind_cloud_3d.png", 175, 760, 220),
+    (66.25, 99, "sun_behind_cloud_3d.png", 175, 760, 220),
 ]
 LIGHTNING = []
 CHIPS = [  # t0, t1, text, icon, side
     (1.38, 4.9, "מעילים, מטריות, מגפיים", "coat_3d.png", "R"),
     (5.0, 6.9, "מהפך בשבוע הבא", "cloud_with_rain_3d.png", "L"),
-    (6.94, 10.1, "איפה, כמה ולמה", "magnifying_glass_tilted_left_3d.png", "R"),
     (10.28, 12.7, "סופ״ש אביבי", "sun_with_face_3d.png", "L"),
     (12.72, 15.4, "עלייה בטמפרטורות", "chart_increasing_3d.png", "R"),
     (16.7, 18.6, "יום מדהים לבילוי בחוץ", "smiling_face_with_sunglasses_3d.png", "L"),
@@ -211,10 +210,9 @@ CHIPS = [  # t0, t1, text, icon, side
     (58.08, 59.9, "גם ברביעי ובחמישי", "calendar_3d.png", "L"),
     (60.2, 62.4, "אולי גם בסופ״ש הבא", "thinking_face_3d.png", "R"),
     (62.44, 63.7, "לא בלי הפסקות", "sun_behind_cloud_3d.png", "L"),
-    (64.16, 66.3, "לא מערכת גדולה", "pinching_hand_3d_default.png", "R"),
-    (66.34, 67.8, "אבל ממושכת", "stopwatch_3d.png", "L"),
+    (64.16, 65.95, "לא גדולה, אבל ממושכת", "stopwatch_3d.png", "R"),
 ]
-FOLLOW_T0, TAP_T = 67.9, 68.6
+FOLLOW_T0, TAP_T = 66.25, 67.96
 KW_Y, SUB_Y = 1392, 1494
 SAFE_W = 720
 
@@ -410,6 +408,17 @@ def l2_left():
     return 545 - a.shape[1] / 2 + xs.min()
 
 @functools.lru_cache(None)
+def title_img():
+    im = Image.open(A("title_26-11_umbrella.png")).convert("RGBA")
+    a = np.asarray(im)[..., 3]; ys, xs = np.where(a > 24)
+    im = im.crop((xs.min(), ys.min(), xs.max() + 1, ys.max() + 1))
+    w = 840; h = int(im.size[1] * w / im.size[0])
+    arr = to_np(im.resize((w, h), Image.LANCZOS))
+    al = arr[..., 3]; arr[..., 3] = np.clip((al - 40) * 255 / 215, 0, 255)   # drop the faint haze around the edges
+    ys = np.where(arr[..., 3].max(1) > 12)[0]; arr = arr[:ys.max() + 1]
+    return arr, 458 - arr.shape[0] / 2   # bottom edge at y=458 (above the head)
+
+@functools.lru_cache(None)
 def kw_sprite(text, theme):
     g0, g1, sf, ef = {"sun": ((255, 240, 120), (255, 140, 30), (90, 35, 0), (150, 65, 0)),
                       "storm": ((215, 225, 255), (110, 120, 255), (16, 18, 70), (30, 34, 120)),
@@ -473,7 +482,7 @@ def follow_card(followed):
     ring = Image.alpha_composite(wr, ring); ring.alpha_composite(av, (10, 10))
     base.alpha_composite(ring, (pad + w - 152 - 24, pad + (h - 152) // 2))
     t1 = text_layer("עקבו אחריי", 48, 800, fill=(18, 24, 38), pad=0)
-    num = text_layer("63K", 50, 800, fill=(18, 24, 38), pad=0)
+    num = text_layer("63.1K", 50, 800, fill=(18, 24, 38), pad=0)
     lab = text_layer("עוקבים", 36, 600, fill=(110, 118, 132), pad=0)
     rx = pad + w - 152 - 48
     base.alpha_composite(t1, (rx - t1.size[0], pad + 30))
@@ -610,29 +619,18 @@ def render(i, raw):
     for (t0, t1, txt, ic, side) in CHIPS:
         draw_kw(F, t, t0, t1, txt, ic, side)
 
-    # --- title (persistent through the whole reel): slam-in with flanking 3D icons, then steady
-    l0, l1, l2 = title_parts()
+    # --- title (GPT Image 2.6 design): drop-in with a bounce + flash, then perfectly steady
+    spr, tcy = title_img()
     tt = t - TS
-    def elem(spr, t0, cx, cy, big=1.0, rot=0.0):
-        p = clamp((tt - t0) / 0.42)
-        if p <= 0: return
-        sc = 1.0 if p >= 1 else (1 + (big - 1) * (1 - ease_out_cubic(p))) * (0.6 + 0.4 * ease_out_back(p, 2.2))
-        F.blit(spr, cx, cy, alpha=ease_out_cubic(clamp(p * 1.8)), scale=sc, rot=rot)
-    # soft dark halo behind the title (no edges, behind the person) -> readable on the busy foliage
-    F.blit(DARK_HALO, 540, 360, alpha=0.6 * ease_out_cubic(clamp(tt / 0.4)), behind=True)
-    if 0.0 <= tt < 0.55:  # impact flash behind the headline
-        F.blit(flat_glow(1000, (255, 236, 150)), 540, 310, alpha=0.85 * (1 - tt / 0.55))
-    elem(l1, 0.0, 540, 310, big=1.7)
-    elem(l2, 0.3, 545, 406)
-    for k, (x0, y0, sz) in enumerate(((150, 406, 84), (930, 406, 84), (215, 252, 62), (865, 252, 62))):  # intro sparkles
-        q = tt - 0.35 - 0.1 * k
-        if 0 < q < 2.4:
-            pin = clamp(q / 0.35); out = clamp((q - 1.9) / 0.5)
-            F.blit(icon("sparkles_3d.png", sz), x0, y0, alpha=ease_out_cubic(pin) * (1 - out),
-                   scale=0.3 + 0.7 * ease_out_back(pin, 3.0) + 0.08 * math.sin(q * 9), rot=math.sin(q * 4 + k) * 12)
-    sw = ((tt - 1.0) % 5.0) / 0.9
-    if tt > 1.0 and sw < 1:
-        F.blit(glow(190, (255, 255, 255)), 540 + 300 - 600 * sw, 310, alpha=0.5 * math.sin(math.pi * sw))
+    if 0.0 <= tt < 0.55:
+        F.blit(flat_glow(1000, (200, 230, 255)), 540, tcy, alpha=0.8 * (1 - tt / 0.55))
+    p = clamp(tt / 0.5)
+    if p > 0:
+        if p >= 1:
+            F.blit(spr, 540, tcy)
+        else:
+            F.blit(spr, 540, tcy - (1 - ease_out_cubic(p)) * 90, alpha=ease_out_cubic(clamp(p * 2)),
+                   scale=0.55 + 0.45 * ease_out_back(p, 1.8))
 
     # --- day card (right side, beside the head) — changes with the day being discussed
     for (a0, a1, k) in DAYCARD:
@@ -667,7 +665,7 @@ def render(i, raw):
 
     # --- subtitles (styled: active word glowing gold + pop, upcoming words translucent)
     for (t0, t1, ws) in CHUNKS:
-        if t >= FOLLOW_T0 + 0.15: break
+        if t >= FOLLOW_T0 - 0.05: break
         if t0 <= t < t1:
             p = clamp((t - t0) / 0.12)
             items = []
