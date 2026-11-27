@@ -552,8 +552,8 @@ def draw_markers(F, t, proj):
     sa = intro * (1 - ss_((t - 30.0) / 2.0))
     if sa > 0.01:
         gx, gy, sc = proj(*VZ.c2(*VZ.PLACES["ישראל"]))
-        F.blit(glow(260, (255, 210, 90)), gx + 10, gy - 150, alpha=0.6 * sa, behind=True)
-        F.blit(icon("sun_3d.png", 120), gx + 10, gy - 150 + math.sin(t * 2) * 5, alpha=sa, behind=True, rot=t * 8 % 360 * 0)
+        F.blit(glow(240, (235, 235, 220)), gx - 10, gy - 160, alpha=0.4 * sa, behind=True)
+        F.blit(icon("sun_cirrus_heavy_3d.png", 170), gx - 10, gy - 160 + math.sin(t * 2) * 5, alpha=sa, behind=True)
     # the storm system: 3D cloud cluster above the spiral + rain + lightning
     sx, sy, sc = proj(*VZ.c2(*VZ.storm_pos(t)))
     st = VZ.storm_strength(t) * intro
@@ -613,12 +613,12 @@ def render(i, raw):
     t = i / FPS
     z = zoom_at(t)
     fm = cv2.resize(np.asarray(FACE[min(i, len(FACE) - 1)]).astype(np.float32) / 255, (W, H), interpolation=cv2.INTER_LINEAR)
-    raw = smooth_face(raw.astype(np.float32), fm, 0.65)
+    raw = raw.astype(np.float32)   # no skin smoothing: keep the original look
     img = warp(raw, z).astype(np.float32)
     pm = cv2.resize(np.asarray(PERSON[min(i, len(PERSON) - 1)]), (W, H), interpolation=cv2.INTER_LINEAR)
     hm = cv2.resize(np.asarray(HEAD[min(i, len(HEAD) - 1)]), (W, H), interpolation=cv2.INTER_LINEAR)
     pm = warp(pm, z).astype(np.float32) / 255.0
-    lit = 255 * np.power(np.clip(img / 255, 0, 1), 0.80) * np.array([1.06, 1.04, 1.0], np.float32) + 4
+    lit = img * 1.07   # gentle exposure lift, contrast and colour kept
     pmb = cv2.GaussianBlur(pm, (0, 0), 3)[..., None]
     img = img * (1 - pmb) + np.clip(lit, 0, 255) * pmb
     pm = cv2.GaussianBlur(pm, (0, 0), 1.6)
@@ -774,7 +774,7 @@ def run(start, end, outpath):
            "-frames:v", str(end - start), "-f", "rawvideo", "-pix_fmt", "rgb24", "-"]
     dec = subprocess.Popen(cmd, stdout=subprocess.PIPE)
     enc = subprocess.Popen(["ffmpeg", "-v", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}",
-                            "-r", str(FPS), "-i", "-", "-c:v", "libx264", "-preset", "medium", "-crf", "18",
+                            "-r", str(FPS), "-i", "-", "-c:v", "libx264", "-preset", "slow", "-crf", "12",
                             "-pix_fmt", "yuv420p", outpath], stdin=subprocess.PIPE)
     log = []
     i = start
@@ -797,7 +797,7 @@ def run_out(o0, o1, outpath):
            "-frames:v", str(src[-1] - src[0] + 1), "-f", "rawvideo", "-pix_fmt", "rgb24", "-"]
     dec = subprocess.Popen(cmd, stdout=subprocess.PIPE)
     enc = subprocess.Popen(["ffmpeg", "-v", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}",
-                            "-r", str(FPS), "-i", "-", "-c:v", "libx264", "-preset", "medium", "-crf", "18",
+                            "-r", str(FPS), "-i", "-", "-c:v", "libx264", "-preset", "slow", "-crf", "12",
                             "-pix_fmt", "yuv420p", outpath], stdin=subprocess.PIPE)
     log = []; n = 0
     for i in range(src[0], src[-1] + 1):
