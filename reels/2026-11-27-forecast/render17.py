@@ -590,7 +590,7 @@ def draw_markers(F, t, proj):
     for (d0, d1, txt) in DATES:
         w_ = window(t, d0 if d0 > 0 else 0.9, d1, 0.35, 0.25)
         if w_:
-            F.blit(label_chip(txt, size=42), 190, 690, alpha=w_[1], scale=0.6 + 0.4 * ease_out_back(w_[0], 2))
+            F.blit(label_chip(txt, size=34), 175, 700, alpha=w_[1], scale=0.6 + 0.4 * ease_out_back(w_[0], 2))
 
 def ss_(x): x = clamp(x); return x * x * (3 - 2 * x)
 
