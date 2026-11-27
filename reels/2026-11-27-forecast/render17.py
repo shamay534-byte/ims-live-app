@@ -548,18 +548,6 @@ def storm_sprite():
 def draw_markers(F, t, proj):
     intro = clamp((t - 0.6) / 0.6)
     # place labels (pins on the map)
-    for name, (u, v) in VZ.PLACES.items():
-        gx, gy, sc = proj(*VZ.c2(u, v))
-        if not (-50 < gx < 1130 and 600 < gy < 1500): continue
-        isr = name == "ישראל"
-        a = intro * clamp((1100 - gx) / 80) * clamp((gx + 20) / 80)
-        if isr:
-            pul = 0.5 + 0.5 * math.sin(t * 4)
-            F.blit(flat_glow(int(120 + 50 * pul), (255, 70, 70)), gx, gy, alpha=0.9 * a, behind=True)
-        F.blit(glow(26, (255, 255, 255)), gx, gy, alpha=a, behind=True)
-        chip = label_chip(name, bg=((235, 40, 60), (150, 0, 25)) if isr else ((25, 45, 90), (12, 22, 50)), size=40 if isr else 32)
-        cw_ = chip.shape[1] / 2 - 18
-        F.blit(chip, min(max(gx, 100 + cw_), 975 - cw_), gy - 48, alpha=a, behind=True)
     # spring sun over Israel during the weekend, fading as the system arrives
     sa = intro * (1 - ss_((t - 30.0) / 2.0))
     if sa > 0.01:
@@ -586,6 +574,18 @@ def draw_markers(F, t, proj):
             fl = max(0, 1 - abs(dt) / 0.08) + 0.6 * max(0, 1 - abs(dt - 0.18) / 0.07)
             F.blit(glow(int(560 * sc), (225, 230, 255)), sx, cy, alpha=min(1, fl), behind=True)
             F.blit(icon("high_voltage_3d.png", 150), sx + 20 * sc, cy + 110 * sc, alpha=clamp(1 - dt / 0.45) * clamp((dt + 0.05) / 0.05), behind=True, scale=sc, rot=-10)
+    still = label_vis(t)
+    for name, (u, v) in VZ.PLACES.items():
+        gx, gy, sc = proj(*VZ.c2(u, v))
+        if not (110 < gx < 970 and 640 < gy < 1500): continue
+        isr = name == "ישראל"
+        a = intro * still
+        if isr:
+            pul = 0.5 + 0.5 * math.sin(t * 4)
+            F.blit(flat_glow(int(120 + 50 * pul), (255, 70, 70)), gx, gy, alpha=0.9 * a, behind=True)
+        F.blit(glow(26, (255, 255, 255)), gx, gy, alpha=a, behind=True)
+        chip = label_chip(name, bg=((235, 40, 60), (150, 0, 25)) if isr else ((25, 45, 90), (12, 22, 50)), size=40 if isr else 32)
+        F.blit(chip, gx, gy - 48, alpha=a, behind=True, scale=0.85 + 0.15 * still)
     # date chip
     for (d0, d1, txt) in DATES:
         w_ = window(t, d0 if d0 > 0 else 0.9, d1, 0.35, 0.25)
@@ -593,6 +593,18 @@ def draw_markers(F, t, proj):
             F.blit(label_chip(txt, size=34), 175, 700, alpha=w_[1], scale=0.6 + 0.4 * ease_out_back(w_[0], 2))
 
 def ss_(x): x = clamp(x); return x * x * (3 - 2 * x)
+@functools.lru_cache(None)
+def _still_tab():
+    ts = np.arange(0, 80, 1 / 30)
+    m = np.array([VZ.cam_motion(x) for x in ts]) < 0.6
+    # fade in 0.35 s after the map settles, fade out 0.2 s before it moves
+    v = np.zeros(len(ts))
+    for k in range(len(ts)):
+        lo, hi = max(0, k - 10), min(len(ts), k + 7)
+        v[k] = 1.0 if m[lo:hi].all() else 0.0
+    return cv2.GaussianBlur(v.reshape(1, -1).astype(np.float32), (0, 0), 3).ravel()
+def label_vis(t):
+    tab = _still_tab(); return float(tab[min(len(tab) - 1, int(t * 30))])
 
 def render(i, raw):
     global DARK_HALO
@@ -606,6 +618,9 @@ def render(i, raw):
     pm = cv2.resize(np.asarray(PERSON[min(i, len(PERSON) - 1)]), (W, H), interpolation=cv2.INTER_LINEAR)
     hm = cv2.resize(np.asarray(HEAD[min(i, len(HEAD) - 1)]), (W, H), interpolation=cv2.INTER_LINEAR)
     pm = warp(pm, z).astype(np.float32) / 255.0
+    lit = 255 * np.power(np.clip(img / 255, 0, 1), 0.80) * np.array([1.06, 1.04, 1.0], np.float32) + 4
+    pmb = cv2.GaussianBlur(pm, (0, 0), 3)[..., None]
+    img = img * (1 - pmb) + np.clip(lit, 0, 255) * pmb
     pm = cv2.GaussianBlur(pm, (0, 0), 1.6)
     hm = warp(hm, z)
     hm = cv2.dilate((hm > 90).astype(np.uint8), np.ones((25, 25), np.uint8)) > 0

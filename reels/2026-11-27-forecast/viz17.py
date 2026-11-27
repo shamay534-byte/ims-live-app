@@ -49,9 +49,9 @@ if __name__ == "__main__":
         x, y = c2(u, v); d.ellipse((x - 10, y - 10, x + 10, y + 10), fill=(255, 0, 0)); d.text((x + 14, y - 20), k[::-1], fill=(0, 0, 0), font=f)
     im.resize((CW // 2, CH // 2)).save("stills/viz17_base.jpg")
 
-PLACES = {"איטליה": (688, 466), "יוון": (757, 468), "טורקיה": (850, 432), "ישראל": (913, 489)}
+PLACES = {"איטליה": (676, 462), "יוון": (757, 468), "טורקיה": (850, 432), "ישראל": (913, 489)}
 # ---- storm track (map px) following the ECMWF fields: Italy -> Aegean -> E. Med next to Israel, then lingers
-TRACK = [(0.0, (660, 448)), (23.6, (660, 448)), (31.0, (770, 470)), (37.7, (850, 474)), (41.0, (893, 481)), (50.6, (893, 481)), (55.0, (872, 472)), (99, (872, 472))]
+TRACK = [(0.0, (664, 452)), (23.6, (664, 452)), (31.0, (770, 470)), (37.7, (850, 474)), (41.0, (893, 481)), (50.6, (893, 481)), (55.0, (872, 472)), (99, (872, 472))]
 def storm_pos(t):
     for (t0, a), (t1, b) in zip(TRACK, TRACK[1:]):
         if t0 <= t <= t1:
@@ -60,6 +60,16 @@ def storm_pos(t):
             w = 4 * math.sin(t * 0.7) if t > 41 else 0
             return (x + w, y + 0.6 * w)
     return TRACK[-1][1]
+def track_pos(t):
+    for (t0, a), (t1, b) in zip(TRACK, TRACK[1:]):
+        if t0 <= t <= t1:
+            f = ss((t - t0) / (t1 - t0)) if t1 > t0 else 0
+            return (a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f)
+    return TRACK[-1][1]
+def cam_motion(t, dt=0.12):
+    """screen speed of the map (px per frame-ish); 0 when the camera is still"""
+    (a1, s1, d1, p1), (a2, s2, d2, p2) = cam_at(max(0, t - dt)), cam_at(t + dt)
+    return abs(a1[0] - a2[0]) + abs(a1[1] - a2[1]) + abs(s1[0] - s2[0]) + abs(s1[1] - s2[1]) + abs(d1 - d2) * 0.2 + abs(p1 - p2) * 5
 def storm_strength(t):      # 0..1 : forming over Italy -> mature
     return 0.45 + 0.55 * ss((t - 13.0) / 4.0)
 # ---- camera keyframes: (t, target map px or "storm", screen anchor, distance, pitch)
@@ -67,20 +77,20 @@ CAMS = [
     (0.0, (785, 468), (560, 980), 2600, 46),
     (2.4, (785, 468), (560, 940), 2050, 52),
     (13.0, (782, 468), (560, 940), 2000, 52),
-    (16.0, "storm", (905, 880), 1050, 55),
-    (23.6, "storm", (905, 880), 1050, 55),
+    (16.0, "storm", (865, 880), 1050, 55),
+    (23.6, "storm", (865, 880), 1050, 55),
     (27.0, "storm", (830, 900), 1350, 53),
     (37.0, "storm", (830, 900), 1350, 53),
-    (40.0, "storm", (900, 870), 1050, 55),
-    (50.6, "storm", (900, 870), 1050, 55),
-    (53.5, "storm", (850, 890), 1250, 53),
-    (99.0, "storm", (850, 890), 1250, 53),
+    (40.0, "storm", (835, 870), 1050, 55),
+    (50.6, "storm", (835, 870), 1050, 55),
+    (53.5, "storm", (770, 890), 1250, 53),
+    (99.0, "storm", (770, 890), 1250, 53),
 ]
 def cam_at(t):
     for (t0, ta, aa, da, pa), (t1, tb, ab, db, pb) in zip(CAMS, CAMS[1:]):
         if t0 <= t <= t1:
             f = ss((t - t0) / (t1 - t0))
-            A = storm_pos(t) if ta == "storm" else ta; B = storm_pos(t) if tb == "storm" else tb
+            A = track_pos(t) if ta == "storm" else ta; B = track_pos(t) if tb == "storm" else tb
             L = lambda x, y: x + (y - x) * f
             return (L(A[0], B[0]), L(A[1], B[1])), (L(aa[0], ab[0]), L(aa[1], ab[1])), L(da, db), L(pa, pb)
     raise ValueError
