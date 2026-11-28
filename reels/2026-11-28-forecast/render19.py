@@ -623,9 +623,7 @@ def render(i, raw):
     # --- title (GPT Image 2.6 design): drop-in with a bounce + flash, then perfectly steady
     spr, tcy = title_img()
     tt = t - TS
-    if 0.0 <= tt < 0.55:
-        F.blit(flat_glow(1000, (200, 230, 255)), 540, tcy, alpha=0.8 * (1 - tt / 0.55))
-    p = clamp(tt / 0.5)
+    p = 1.0   # title fully visible from the first frame
     if p > 0:
         if p >= 1:
             F.blit(spr, 540, tcy)
