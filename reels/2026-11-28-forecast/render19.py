@@ -407,7 +407,7 @@ def l2_left():
     a = title_parts()[2]; xs = np.where(a[..., 3].max(0) > 40)[0]
     return 545 - a.shape[1] / 2 + xs.min()
 
-TITLE_W = 860
+TITLE_W = 800
 @functools.lru_cache(None)
 def title_img():
     im = Image.open(A("title_28-11.png")).convert("RGBA")
@@ -417,7 +417,7 @@ def title_img():
     arr = to_np(im.resize((w, h), Image.LANCZOS))
     al = arr[..., 3]; arr[..., 3] = np.clip((al - 40) * 255 / 215, 0, 255)   # drop the faint haze around the edges
     ys = np.where(arr[..., 3].max(1) > 12)[0]; arr = arr[:ys.max() + 1]
-    return arr, 440 - arr.shape[0] / 2   # bottom edge at y=440 (above the head)
+    return arr, 444 - arr.shape[0] / 2   # bottom edge at y=444 (above the head)
 
 @functools.lru_cache(None)
 def kw_sprite(text, theme):
